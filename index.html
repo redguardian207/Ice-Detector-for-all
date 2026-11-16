@@ -1634,6 +1634,7 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
       const n = counts.get(town) || 0;
       const reg = (rows.find((r) => r.town === town) || {}).area || hsRegionOf(town);
       const regName = reg ? hsRegions[reg].name : 'Washington';
+      if (window.hsCoords && hsCoords[town]) items.push({ k: 'Forecast', t: 'Predict the next report near ' + town, d: 'Chance in the next 7 days within a few miles, from past reports', s: town + ' predict forecast next', rank: 5, go: () => hsPredict(town) });
       items.push({ k: 'City', t: town + ', WA', d: (n ? n + (n === 1 ? ' report' : ' reports') : 'No reports so far') + ' · ' + regName, s: town, rank: n ? 2 : 1,
         go: () => { allData(); hsDive('town', town); } });
     }
@@ -1887,6 +1888,93 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
     else if (e.key === 'Enter') { e.preventDefault(); pick(sel >= 0 ? sel : 0); }
     else if (e.key === 'Escape') { close(); }
   });
+})();
+</script>
+<script>
+// Small-area forecast, run only when a visitor asks for it: the chance of a report within a few miles of a town in the next 7 days, built from past reports and checked against them
+(() => {
+  window.hsCoords = {"Seattle":[47.606,-122.332],"Bellevue":[47.61,-122.201],"Kent":[47.381,-122.235],"Renton":[47.482,-122.217],"Federal Way":[47.322,-122.313],"Auburn":[47.307,-122.228],"Kirkland":[47.676,-122.206],"Redmond":[47.674,-122.122],"Shoreline":[47.756,-122.341],"Burien":[47.47,-122.347],"Sammamish":[47.616,-122.036],"Issaquah":[47.53,-122.033],"Tukwila":[47.474,-122.261],"SeaTac":[47.444,-122.297],"Des Moines":[47.402,-122.324],"Bothell":[47.762,-122.205],"Kenmore":[47.757,-122.244],"Mercer Island":[47.571,-122.222],"Covington":[47.358,-122.122],"Maple Valley":[47.393,-122.046],"Enumclaw":[47.204,-121.992],"Black Diamond":[47.309,-122.003],"Algona":[47.279,-122.252],"Pacific":[47.264,-122.25],"Woodinville":[47.754,-122.163],"Snoqualmie":[47.529,-121.826],"North Bend":[47.496,-121.787],"Newcastle":[47.539,-122.156],"Lake Forest Park":[47.757,-122.281],"Normandy Park":[47.436,-122.341],"Vashon":[47.447,-122.46],"Tacoma":[47.253,-122.444],"Lakewood":[47.172,-122.518],"Puyallup":[47.185,-122.293],"University Place":[47.236,-122.55],"Fife":[47.239,-122.357],"Milton":[47.248,-122.313],"Edgewood":[47.25,-122.294],"Sumner":[47.203,-122.24],"Bonney Lake":[47.177,-122.186],"Gig Harbor":[47.329,-122.58],"Spanaway":[47.104,-122.435],"Parkland":[47.155,-122.434],"DuPont":[47.097,-122.631],"Steilacoom":[47.17,-122.603],"Orting":[47.098,-122.204],"Olympia":[47.038,-122.9],"Lacey":[47.034,-122.823],"Tumwater":[47.007,-122.909],"Yelm":[46.942,-122.606],"Bremerton":[47.567,-122.633],"Port Orchard":[47.54,-122.636],"Silverdale":[47.645,-122.695],"Poulsbo":[47.736,-122.646],"Bainbridge Island":[47.626,-122.521],"Shelton":[47.215,-123.101],"Hoodsport":[47.406,-123.142],"Port Angeles":[48.118,-123.43],"Sequim":[48.08,-123.102],"Port Townsend":[48.117,-122.76],"Everett":[47.979,-122.202],"Lynnwood":[47.821,-122.315],"Marysville":[48.052,-122.177],"Edmonds":[47.811,-122.377],"Mountlake Terrace":[47.788,-122.309],"Mill Creek":[47.86,-122.204],"Mukilteo":[47.945,-122.304],"Lake Stevens":[48.015,-122.064],"Snohomish":[47.913,-122.098],"Monroe":[47.855,-121.971],"Arlington":[48.199,-122.125],"Granite Falls":[48.084,-121.968],"Stanwood":[48.241,-122.371],"Sultan":[47.863,-121.817],"Bellingham":[48.75,-122.479],"Ferndale":[48.847,-122.591],"Lynden":[48.946,-122.452],"Everson":[48.92,-122.343],"Blaine":[48.994,-122.747],"Sumas":[48.999,-122.264],"Laurel":[48.866,-122.488],"Mount Vernon":[48.421,-122.334],"Burlington":[48.476,-122.325],"Sedro-Woolley":[48.504,-122.236],"Anacortes":[48.512,-122.613],"Bow":[48.561,-122.405],"Oak Harbor":[48.293,-122.643],"Coupeville":[48.22,-122.686],"Langley":[48.04,-122.406],"Friday Harbor":[48.534,-123.017],"Vancouver":[45.639,-122.661],"Camas":[45.587,-122.4],"Washougal":[45.583,-122.353],"Battle Ground":[45.781,-122.533],"Ridgefield":[45.815,-122.743],"La Center":[45.862,-122.67],"Woodland":[45.904,-122.744],"Kelso":[46.147,-122.908],"Longview":[46.138,-122.938],"Castle Rock":[46.275,-122.908],"Centralia":[46.716,-122.954],"Chehalis":[46.662,-122.964],"Aberdeen":[46.975,-123.816],"Hoquiam":[46.981,-123.889],"Ocean Shores":[46.974,-124.156],"Long Beach":[46.352,-124.054],"Raymond":[46.687,-123.733],"Stevenson":[45.696,-121.885],"White Salmon":[45.728,-121.487],"Yakima":[46.602,-120.506],"Union Gap":[46.557,-120.475],"Selah":[46.654,-120.53],"Wapato":[46.448,-120.42],"Toppenish":[46.378,-120.308],"Sunnyside":[46.323,-120.009],"Grandview":[46.251,-119.902],"Prosser":[46.207,-119.769],"Granger":[46.342,-120.188],"Zillah":[46.402,-120.262],"Ellensburg":[46.996,-120.548],"Cle Elum":[47.195,-120.939],"Wenatchee":[47.423,-120.31],"East Wenatchee":[47.416,-120.293],"Chelan":[47.841,-120.017],"Leavenworth":[47.596,-120.661],"Quincy":[47.234,-119.853],"Moses Lake":[47.13,-119.278],"Ephrata":[47.318,-119.553],"Othello":[46.826,-119.175],"Mattawa":[46.738,-119.902],"Royal City":[46.901,-119.631],"Pasco":[46.239,-119.101],"Kennewick":[46.211,-119.137],"Richland":[46.286,-119.284],"West Richland":[46.304,-119.361],"Benton City":[46.263,-119.488],"Omak":[48.411,-119.528],"Okanogan":[48.361,-119.583],"Brewster":[48.096,-119.781],"Pateros":[48.052,-119.903],"Tonasket":[48.705,-119.44],"Oroville":[48.939,-119.435],"Goldendale":[45.821,-120.822],"Spokane":[47.659,-117.426],"Spokane Valley":[47.673,-117.239],"Liberty Lake":[47.675,-117.112],"Cheney":[47.487,-117.576],"Airway Heights":[47.645,-117.593],"Medical Lake":[47.573,-117.682],"Deer Park":[47.954,-117.477],"Pullman":[46.731,-117.18],"Colfax":[46.88,-117.364],"Walla Walla":[46.065,-118.343],"College Place":[46.043,-118.388],"Dayton":[46.32,-117.972],"Clarkston":[46.416,-117.045],"Ritzville":[47.127,-118.38],"Colville":[48.547,-117.905],"Chewelah":[48.276,-117.715],"Newport":[48.18,-117.043]};
+  const DAY = 864e5;
+  const miles = (a, b) => { const R = 3958.8, r = Math.PI / 180; const dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r; const h = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+  const T = (d) => Date.parse(d + 'T00:00:00Z');
+  const fmt = (ms) => d3.utcFormat('%b %-d, %Y')(new Date(ms));
+  const pct = (x) => (x < 0.01 && x > 0 ? '<1' : Math.round(x * 100)) + '%';
+  const rowsAll = () => { const d = dash.data('incidents'); return d.status === 'ok' ? d.data.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date || '')) : []; };
+  const refOf = (rows) => { const v = rows.reduce((m, r) => (r.as_of > m ? r.as_of : m), ''); return v ? T(v) : Date.now(); };
+  // Rate at time t: long-run rate plus a boost from recent hits that fades with time
+  const lam = (days, t, mu, a, tau) => { let x = mu; for (const h of days) { if (h >= t) break; x += a * Math.exp(-(t - h) / (tau * DAY)) / tau; } return x; };
+  const forecast = (town, R) => {
+    const C = hsCoords; const c = C[town]; if (!c) return null;
+    const rows = rowsAll(); const ref = refOf(rows);
+    const near = Object.keys(C).filter((k) => miles(c, C[k]) <= R);
+    const inArea = rows.filter((r) => near.includes(r.town));
+    const days = [...new Set(inArea.map((r) => T(r.date)))].sort((a, b) => a - b);
+    const first = rows.length ? Math.min(...rows.map((r) => T(r.date))) : ref;
+    const span = Math.max(30, (ref - first) / DAY);
+    const mu = days.length / span;
+    // Back-test week by week: pick the fade settings that would have done best, and compare with the plain long-run rate
+    const weeks = []; for (let w = first + 90 * DAY; w + 7 * DAY <= ref; w += 7 * DAY) weeks.push(w);
+    const hitIn = (w) => days.some((h) => h >= w && h < w + 7 * DAY);
+    const score = (a, tau) => {
+      let b = 0; weeks.forEach((w) => { const before = days.filter((h) => h < w); const m = before.length / Math.max(30, (w - first) / DAY); const p = 1 - Math.exp(-7 * lam(before, w, m, a, tau)); b += (p - (hitIn(w) ? 1 : 0)) ** 2; });
+      return weeks.length ? b / weeks.length : 1;
+    };
+    let best = { a: 0, tau: 14, brier: score(0, 14) };
+    const base = best.brier;
+    for (const a of [0.25, 0.5, 1]) for (const tau of [7, 14, 30]) { const sc = score(a, tau); if (sc < best.brier - 1e-9) best = { a, tau, brier: sc }; }
+    const p7 = 1 - Math.exp(-7 * lam(days, ref + DAY / 2, mu, best.a, best.tau));
+    const gaps = days.slice(1).map((h, i) => (h - days[i]) / DAY).sort((a, b) => a - b);
+    const q = (p) => gaps.length ? gaps[Math.min(gaps.length - 1, Math.floor(p * gaps.length))] : null;
+    const last = days.length ? days[days.length - 1] : null;
+    const tw = d3.rollups(inArea, (v) => d3.sum(v, (r) => Math.pow(0.5, (ref - T(r.date)) / (90 * DAY))), (r) => r.town).sort((a, b) => b[1] - a[1]);
+    const tot = d3.sum(tw, (d) => d[1]) || 1;
+    const typed = inArea.filter((r) => r.place_type && r.place_type !== 'Not given');
+    const timed = inArea.filter((r) => /^\d{2}:\d{2}$/.test(r.time || ''));
+    return { town, R, near, inArea, days, ref, mu, best, base, weeks, p7, gaps, q, last, tw, tot, typed, timed, beat: weeks.length >= 20 && best.brier < base - 0.002 };
+  };
+  const view = (town, R0) => {
+    let R = R0 || 10;
+    return { title: 'Next report near ' + town, sub: 'forecast from past reports', build: (b) => {
+      const { E, section, reportTable } = hsUI;
+      const ctl = E('div', 'hs-webbtns');
+      [5, 10, 25].forEach((r) => { const bt = E('button', 'hs-more', r + ' miles'); bt.type = 'button'; if (r === R) bt.style.fontWeight = '700'; bt.addEventListener('click', () => { R = r; b.replaceChildren(); view(town, r).build(b); }); ctl.appendChild(bt); });
+      const s0 = section(b, 'Area', 'Within ' + R + ' miles of ' + town + '. Pick a size:'); s0.appendChild(ctl);
+      const f = forecast(town, R);
+      if (!f) { s0.appendChild(E('p', 'note', 'No location on file for this town.')); return; }
+      s0.appendChild(E('p', 'note', 'Towns in this area: ' + f.near.join(', ') + '.'));
+      if (f.days.length < 3) { section(b, 'Forecast', 'Only ' + f.days.length + ' past report day' + (f.days.length === 1 ? '' : 's') + ' in this area. Not enough to forecast. Try a bigger area.'); if (f.inArea.length) section(b, 'Past reports here').appendChild(reportTable(f.inArea)); return; }
+      const s1 = section(b, 'Next 7 days');
+      const big = E('div', 'hs-big'); big.append(E('span', 'v', pct(f.p7)), E('span', 'l', 'chance of at least one report in this area in the next 7 days.')); s1.appendChild(big);
+      const how = E('p', 'hs-sub');
+      how.append(E('span', f.beat ? 'hs-ok' : 'hs-no', f.beat ? 'Beat the plain average. ' : 'Did not beat the plain average. '),
+        document.createTextNode(`Checked on ${f.weeks.length} past weeks. Its error score was ${f.best.brier.toFixed(3)} against ${f.base.toFixed(3)} for always using this area's long-run rate (lower is better).` + (f.best.a ? ` It gives extra weight to hits in the last ${f.best.tau} days or so.` : ' Recent hits did not help here, so it uses the long-run rate.') + (f.beat ? ' The fade setting was picked on these same weeks, so this check is a little generous.' : ' Read the number as a summary of the past.')));
+      s1.appendChild(how);
+      const s2 = section(b, 'Since the last report');
+      const since = (f.ref - f.last) / DAY;
+      const lines = [`Last report in this area: ${fmt(f.last)} (${Math.round(since)} days before the latest check).`];
+      if (f.gaps.length >= 3) {
+        const md = f.q(0.5), lo = f.q(0.25), hi = f.q(0.75);
+        lines.push(`Gap between report days here: usually ${Math.round(lo)} to ${Math.round(hi)} days, middle ${Math.round(md)} days, from ${f.gaps.length} gaps.`);
+        lines.push(since <= hi ? `If the usual gap holds, the next one would fall between ${fmt(f.last + lo * DAY)} and ${fmt(f.last + hi * DAY)}.` : `It has been longer than the usual gap. Gaps this long have happened ${f.gaps.filter((g) => g >= since).length} of ${f.gaps.length} times here.`);
+      }
+      lines.forEach((t) => s2.appendChild(E('p', 'hs-wiki', t)));
+      if (f.tw.length > 1) {
+        const s3 = section(b, 'Which town in the area', 'Share of past reports, recent ones counting more (half weight every 90 days).');
+        const box = E('div', 'hs-bars');
+        f.tw.forEach(([t, w]) => { const line = E('div', 'hs-bar'); const tr = E('div', 'track'); const fl = E('div', 'fill'); fl.style.width = (w / f.tw[0][1]) * 100 + '%'; fl.style.background = dash.colors[0]; tr.appendChild(fl); line.append(E('span', null, t), tr, E('span', 'c', Math.round(w / f.tot * 100) + '%')); box.appendChild(line); });
+        s3.appendChild(box);
+      }
+      const s4 = section(b, 'What kind of place and when');
+      const top = (rows, fn) => d3.rollups(rows, (v) => v.length, fn).sort((a, c) => c[1] - a[1]).slice(0, 3).map(([k, n]) => k + ' (' + n + ')').join(', ');
+      s4.appendChild(E('p', 'hs-wiki', f.typed.length ? 'Places: ' + top(f.typed, (r) => r.place_type) + '. From ' + f.typed.length + ' reports that give a place.' : 'No report here gives a type of place.'));
+      const band = (r) => { const h = +r.time.slice(0, 2); return h < 9 ? 'before 9 a.m.' : h < 12 ? '9 a.m. to noon' : h < 15 ? 'noon to 3 p.m.' : 'after 3 p.m.'; };
+      s4.appendChild(E('p', 'hs-wiki', f.timed.length ? 'Times: ' + top(f.timed, band) + '. From ' + f.timed.length + ' reports that give a time.' : 'No report here gives a time.'));
+      s4.appendChild(E('p', 'hs-wiki', 'Days: ' + top(f.inArea, (r) => d3.utcFormat('%A')(new Date(T(r.date)))) + '.'));
+      section(b, 'Past reports in this area', 'The records this forecast is built from.').appendChild(reportTable(f.inArea));
+      section(b, 'Limits', 'Built only from reports that reached this site. It knows nothing about planned operations, a quiet stretch does not mean an area is safe, and small areas have few reports, so their numbers swing a lot. It gets better as more reports come in.');
+    } };
+  };
+  window.hsPredict = (town, R) => hsShow(view(town, R));
 })();
 </script>
 </body>
