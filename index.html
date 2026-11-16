@@ -1771,9 +1771,9 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
       .sort((a, b) => b.localeCompare(a))
       .map((t) => ({ title: t, url: 'https://theicelist.org/index.php?title=' + enc(t.replace(/ /g, '_')) })));
   let ice = { q: '', items: [] };
-  // Read one ICE List page and show it here as plain text. Fields that name people or agents are left out.
-  const SKIP = /^(people_affected|people|name|names|victim|victims|agents_involved|agents|agent|officers|image|caption|title)$/;
-  const LABEL = { date: 'Date', city: 'City', state: 'State', agencies: 'Agency', operation_type: 'What happened', status: 'Status', verification: 'Verification', injuries: 'Injuries', deaths: 'Deaths', location: 'Location', place: 'Place' };
+  // Read one ICE List page and show it here as plain text. Fields that name agents or officers are left out.
+  const SKIP = /^(agents_involved|agents|agent|officers|officer|image|caption|title)$/;
+  const LABEL = { people_affected: 'People affected', people: 'People affected', date: 'Date', city: 'City', state: 'State', agencies: 'Agency', operation_type: 'What happened', status: 'Status', verification: 'Verification', injuries: 'Injuries', deaths: 'Deaths', location: 'Location', place: 'Place' };
   const clean = (t) => String(t || '')
     .replace(/<ref[^>]*\/>/g, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/g, '').replace(/<[^>]+>/g, '')
     .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1')
@@ -1798,7 +1798,7 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
       body.split('\n').forEach((ln) => {
         const h = ln.match(/^==+\s*(.*?)\s*==+\s*$/);
         if (h) { head = h[1]; return; }
-        if (/people|agent|officer|name/i.test(head) || /^(sources|references|see also|external links)$/i.test(head)) return;
+        if (/agent|officer/i.test(head) || /^(sources|references|see also|external links)$/i.test(head)) return;
         const t = clean(ln.replace(/^\*\s*/, '')).replace(/^Summary\s*:\s*/i, ''); if (t && !/^\[\[Category/i.test(ln) && !/^Category:/i.test(t)) parts.push(t);
       });
       return { facts, links, text: [...new Set(parts)].slice(0, 8) };
@@ -1807,7 +1807,7 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
     const { E, section } = hsUI;
     const s1 = section(b, 'What The ICE List says', 'Loading…');
     icePage(title).then((pg) => {
-      s1.querySelector('.note').textContent = 'Pulled from theicelist.org. Names of people and agents are left out on this site.';
+      s1.querySelector('.note').textContent = 'Pulled from theicelist.org.';
       if (pg.facts.length) { const dl = E('dl', 'hs-icefacts'); pg.facts.forEach(([k, v]) => dl.append(E('dt', null, k), E('dd', null, v))); s1.appendChild(dl); }
       pg.text.forEach((t) => s1.appendChild(E('p', 'hs-wiki', t)));
       if (pg.links.length) {
