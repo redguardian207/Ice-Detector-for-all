@@ -40,6 +40,8 @@
 .hs-gs-list .t { font-weight: 600; }
 .hs-gs-list .d { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .hs-gs-list .none { cursor: default; color: var(--color-fg-muted); }
+.hs-gs-list .sep { cursor: default; padding: 8px 10px 2px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); border-top: 1px solid var(--color-border-line); margin-top: 4px; border-radius: 0; }
+.hs-gs-list .sep:hover { background: none; }
 .hs-flash { animation: hsflash 1.6s ease-out; }
 @keyframes hsflash { 0% { box-shadow: 0 0 0 3px var(--color-fg); } 100% { box-shadow: 0 0 0 3px transparent; } }
 .hs-seg button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: -2px; }
@@ -214,7 +216,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   <header class="hs-head" id="top">
     <h1 class="hs-title">Washington ICE hotspots</h1>
     <div class="hs-gs" role="search">
-      <input id="hs-gs" type="search" autocomplete="off" placeholder="Search Washington: a city, a place, a topic" aria-label="Search this site" aria-controls="hs-gs-list" aria-expanded="false" aria-autocomplete="list">
+      <input id="hs-gs" type="search" autocomplete="off" placeholder="Search a city, place, person, topic or event" aria-label="Search this site" aria-controls="hs-gs-list" aria-expanded="false" aria-autocomplete="list">
       <ul class="hs-gs-list" id="hs-gs-list" role="listbox" hidden></ul>
     </div>
     <p class="hs-take"><b data-draw="top1" data-source="breakdowns" data-field="key">—</b> has the most past ICE reports, weighted toward recent ones, followed by <b data-draw="top2" data-source="breakdowns" data-field="key">—</b> and <b data-draw="top3" data-source="breakdowns" data-field="key">—</b>. Data checked <b data-draw="asof" data-source="incidents" data-field="as_of">—</b>.</p>
@@ -1653,16 +1655,50 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
     scored.sort((a, b) => b[0] - a[0] || a[1].t.localeCompare(b[1].t));
     return scored.slice(0, 12).map((x) => x[1]);
   };
+  // Results from other websites: live Wikipedia matches plus links that run the search on news and other sites
+  const enc = encodeURIComponent;
+  const webLinks = (q) => {
+    const wa = /washington|\bwa\b/i.test(q) ? q : q + ' Washington';
+    const open = (u) => () => window.open(u, '_blank', 'noopener');
+    return [
+      { k: 'Web', t: 'News: ' + q, d: 'Google News results for this search', go: open('https://news.google.com/search?q=' + enc(wa) + '&hl=en-US&gl=US&ceid=US:en') },
+      { k: 'Web', t: 'The ICE List: ' + q, d: 'Search theicelist.org', go: open('https://theicelist.org/index.php?title=Special:Search&fulltext=1&search=' + enc(q)) },
+      { k: 'Web', t: 'Reddit: ' + q, d: 'Posts that mention this', go: open('https://www.reddit.com/search/?q=' + enc(wa)) },
+      { k: 'Web', t: 'Web search: ' + q, d: 'DuckDuckGo results', go: open('https://duckduckgo.com/?q=' + enc(wa)) },
+    ];
+  };
+  let wiki = { q: '', items: [] }, wikiT = 0;
+  const fetchWiki = (q) => {
+    clearTimeout(wikiT);
+    if (q.trim().length < 3) { wiki = { q, items: [] }; return; }
+    wikiT = setTimeout(() => {
+      fetch('https://en.wikipedia.org/w/rest.php/v1/search/page?limit=3&q=' + enc(q))
+        .then((r) => r.json())
+        .then((j) => {
+          if (input.value !== q) return;
+          wiki = { q, items: (j.pages || []).map((pg) => ({ k: 'Wikipedia', t: pg.title, d: pg.description || String(pg.excerpt || '').replace(/<[^>]+>/g, '').slice(0, 110), go: () => window.open('https://en.wikipedia.org/wiki/' + enc(pg.key), '_blank', 'noopener') })) };
+          res = withWeb(q); show();
+        }).catch(() => {});
+    }, 350);
+  };
+  const withWeb = (q) => {
+    const local = search(q);
+    if (norm(q).length < 2) return local;
+    const outside = (wiki.q === q ? wiki.items : []).concat(webLinks(q.trim()));
+    outside[0].first = true;
+    return local.concat(outside);
+  };
   let res = [], sel = -1;
   const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); sel = -1; };
   const show = () => {
     list.replaceChildren();
     if (!input.value.trim()) { close(); return; }
-    if (!res.length) {
-      const li = document.createElement('li'); li.className = 'none'; li.textContent = 'Nothing on this page matches. Try a city name, "cameras", "lawyer" or "report".';
+    if (!res.length || res[0].first) {
+      const li = document.createElement('li'); li.className = 'none'; li.textContent = 'Nothing on this page matches.';
       list.appendChild(li);
     }
     res.forEach((it, i) => {
+      if (it.first) { const sp = document.createElement('li'); sp.className = 'sep'; sp.setAttribute('role', 'presentation'); sp.textContent = 'From other websites (opens a new tab)'; list.appendChild(sp); }
       const li = document.createElement('li'); li.id = 'hs-gs-o' + i; li.setAttribute('role', 'option'); li.setAttribute('aria-selected', String(i === sel));
       const k = document.createElement('span'); k.className = 'k'; k.textContent = it.k;
       const t = document.createElement('span'); t.className = 't'; t.textContent = it.t;
@@ -1675,8 +1711,8 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
     if (sel >= 0) input.setAttribute('aria-activedescendant', 'hs-gs-o' + sel); else input.removeAttribute('aria-activedescendant');
   };
   const pick = (i) => { const it = res[i]; if (!it) return; close(); input.blur(); it.go(); };
-  input.addEventListener('input', () => { res = search(input.value); sel = -1; show(); });
-  input.addEventListener('focus', () => { if (input.value.trim()) { res = search(input.value); show(); } });
+  input.addEventListener('input', () => { res = withWeb(input.value); sel = -1; show(); fetchWiki(input.value); });
+  input.addEventListener('focus', () => { if (input.value.trim()) { res = withWeb(input.value); show(); } });
   input.addEventListener('blur', () => setTimeout(close, 120));
   input.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); if (res.length) { sel = (sel + 1) % res.length; show(); } }
