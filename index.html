@@ -177,6 +177,10 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
 .hs-webbtns a { font-size: var(--cds-font-size-caption); color: var(--color-fg); border: 1px solid var(--color-border-line); border-radius: 999px; padding: 4px 12px; text-decoration: none; }
 .hs-webbtns a:hover { background: var(--color-panel); }
 .hs-wiki { margin: 0; max-width: 70ch; line-height: 1.5; }
+.hs-icefacts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 16px; margin: 0; font-size: var(--cds-font-size-caption); }
+.hs-icefacts dt { color: var(--color-fg-muted); } .hs-icefacts dd { margin: 0; }
+.hs-icelinks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.hs-icelinks button { font: inherit; text-align: left; background: none; border: 0; padding: 0; color: var(--color-fg); text-decoration: underline; cursor: pointer; }
 .hs-dsec { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); min-width: 0; }
 .hs-dsec h3 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: 600; }
 .hs-dsec .note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
@@ -1363,7 +1367,7 @@ dash.draw('list', (tbody) => {
   V.date = (d) => listView('Reports on ' + hsDate(d), (r) => r.date === d);
   V.report = (id) => { const r = scoped().find((x) => x.id === id); return listView(r ? r.title + ', ' + r.town : 'Report', (x) => x.id === id, r ? hsDate(r.date) : ''); };
   window.hsShow = (v) => go(v, true);
-  window.hsUI = { E, section, reportTable, dlg };
+  window.hsUI = { E, section, reportTable, dlg, push: (v) => go(v, false) };
 
   // Hook up the main page
   const hook = (sel, key) => {
@@ -1713,11 +1717,25 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
     if (!words.length) return [];
     return d.data.filter((r) => { const h = norm([r.title, r.town, r.place, r.place_type, r.date].join(' ')); return words.some((w) => h.includes(w)); });
   };
+  const LOCATOR = 'https://locator.ice.gov/odls/#/search';
+  const looksLikeName = (q) => { const w = q.trim().split(/\s+/); return w.length >= 2 && w.length <= 4 && w.every((x) => /^[A-Za-zÀ-ÿ'.-]+$/.test(x)) && !search(q).some((it) => it.k !== 'Report'); };
   // One panel for a search or a Wikipedia article: summary, matching reports on this site, and searches on other sites
   const webPanel = (q, wikiKey, wikiTitle) => {
     allData();
     hsShow({ title: wikiTitle || 'Search: ' + q.trim(), sub: 'about ICE activity in Washington', build: (b) => {
       const { E, section, reportTable } = hsUI;
+      if (!wikiKey) {
+        const sw = section(b, 'On Wikipedia', 'Loading…');
+        fetch('https://en.wikipedia.org/w/rest.php/v1/search/page?limit=3&q=' + enc(q.trim()))
+          .then((r) => r.json())
+          .then((j) => {
+            const pages = j.pages || [];
+            sw.querySelector('.note').textContent = pages.length ? 'Tap one to read its summary here.' : 'No Wikipedia articles match.';
+            const ul = E('ul', 'hs-icelinks');
+            pages.forEach((pg) => { const li = E('li'); const bt = E('button', null, pg.title + (pg.description ? ': ' + pg.description : '')); bt.type = 'button'; bt.addEventListener('click', () => { hsUI.dlg.close(); webPanel(q, pg.key, pg.title); }); li.appendChild(bt); ul.appendChild(li); });
+            sw.appendChild(ul);
+          }).catch(() => { sw.querySelector('.note').textContent = 'Could not reach Wikipedia right now.'; });
+      }
       if (wikiKey) {
         const s1 = section(b, 'From Wikipedia');
         const p = E('p', 'hs-wiki', 'Loading…'); s1.appendChild(p);
@@ -1726,15 +1744,83 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
           .then((j) => { p.textContent = j.extract || 'No summary available.'; const a = E('a', null, 'Read the full article on Wikipedia ›'); a.href = 'https://en.wikipedia.org/wiki/' + enc(wikiKey); a.target = '_blank'; a.rel = 'noopener'; s1.appendChild(a); })
           .catch(() => { p.textContent = 'Could not load the summary.'; });
       }
+      const s0 = section(b, 'On The ICE List', 'Loading…');
+      iceList(wikiTitle || q).then((list) => {
+        s0.querySelector('.note').textContent = list.length ? (list.length === 1 ? '1 Washington incident page matches' : list.length + ' Washington incident pages match') + '. Tap one to read it here.' : 'No Washington incident pages on The ICE List match.';
+        const ul = E('ul', 'hs-icelinks');
+        list.slice(0, 25).forEach((x) => { const li = E('li'); const bt = E('button', null, x.title); bt.type = 'button'; bt.addEventListener('click', () => hsUI.push(iceView(x.title))); li.appendChild(bt); ul.appendChild(li); });
+        s0.appendChild(ul);
+      }).catch(() => { s0.querySelector('.note').textContent = 'Could not reach The ICE List right now.'; });
+      b.appendChild(b.firstChild);
       const rows = siteRows(wikiTitle || q);
-      section(b, 'Reports on this site that match', rows.length ? null : 'No reports on this site mention this.').appendChild(reportTable(rows));
+      const sr = section(b, 'Reports on this site that match', rows.length ? null : 'No reports on this site mention this.');
+      if (rows.length) sr.appendChild(reportTable(rows));
+      if (looksLikeName(q)) {
+        const sl = section(b, 'Is this person detained?', 'The official ICE Online Detainee Locator searches by first and last name plus country of birth, or by A-number. It opens in a new tab; type the name there.');
+        const bx = E('div', 'hs-webbtns'); const a = E('a', null, 'ICE detainee locator ›'); a.href = LOCATOR; a.target = '_blank'; a.rel = 'noopener'; bx.appendChild(a); sl.appendChild(bx);
+      }
       section(b, 'Search other websites', 'Each opens in a new tab, searching for: ' + scopeQ(q)).appendChild(webBtns(q));
     } });
   };
+  // The ICE List: live search of its incident pages in Washington State
+  const iceList = (q) => fetch('https://theicelist.org/api.php?action=query&list=search&srlimit=20&srprop=&format=json&origin=*&srsearch=' + enc(q.trim() + ' Washington'))
+    .then((r) => r.json())
+    .then((j) => (j.query && j.query.search || [])
+      .map((x) => x.title)
+      .filter((t) => /^\d{4}-\d{2}-\d{2}\b/.test(t) && /Washington/.test(t) && !/D\.?C\.?/.test(t))
+      .sort((a, b) => b.localeCompare(a))
+      .map((t) => ({ title: t, url: 'https://theicelist.org/index.php?title=' + enc(t.replace(/ /g, '_')) })));
+  let ice = { q: '', items: [] };
+  // Read one ICE List page and show it here as plain text. Fields that name people or agents are left out.
+  const SKIP = /^(people_affected|people|name|names|victim|victims|agents_involved|agents|agent|officers|image|caption|title)$/;
+  const LABEL = { date: 'Date', city: 'City', state: 'State', agencies: 'Agency', operation_type: 'What happened', status: 'Status', verification: 'Verification', injuries: 'Injuries', deaths: 'Deaths', location: 'Location', place: 'Place' };
+  const clean = (t) => String(t || '')
+    .replace(/<ref[^>]*\/>/g, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/g, '').replace(/<[^>]+>/g, '')
+    .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1')
+    .replace(/\[https?:\/\/\S+\s+([^\]]+)\]/g, '$1').replace(/\[https?:\/\/\S+\]/g, '')
+    .replace(/'{2,}/g, '').replace(/\{\{[^}]*\}\}/g, '').trim();
+  const icePage = (title) => fetch('https://theicelist.org/api.php?action=query&prop=revisions&rvprop=content&rvslots=main&format=json&formatversion=2&origin=*&titles=' + enc(title))
+    .then((r) => r.json())
+    .then((j) => {
+      const pg = j.query && j.query.pages && j.query.pages[0];
+      const src = pg && pg.revisions ? pg.revisions[0].slots.main.content : '';
+      const box = (src.match(/^\{\{Infobox[\s\S]*?\n\}\}/) || [''])[0];
+      const facts = []; const links = [];
+      box.split(/\n\|/).slice(1).forEach((line) => {
+        const m = line.match(/^\s*([\w ]+?)\s*=\s*([\s\S]*)$/); if (!m) return;
+        const k = m[1].trim().toLowerCase().replace(/ /g, '_');
+        if (k === 'key_sources' || k === 'sources') { (m[2].match(/\[https:\/\/[^\s\]]+[^\]]*\]/g) || []).forEach((x) => { const mm = x.match(/\[(https:\/\/\S+)\s*([^\]]*)\]/); links.push({ url: mm[1], text: mm[2] || mm[1] }); }); return; }
+        if (SKIP.test(k)) return;
+        const v = clean(m[2].replace(/\n\}\}$/, '')); if (v && LABEL[k]) facts.push([LABEL[k], v]);
+      });
+      const body = src.slice(box.length);
+      const parts = []; let head = 'Summary';
+      body.split('\n').forEach((ln) => {
+        const h = ln.match(/^==+\s*(.*?)\s*==+\s*$/);
+        if (h) { head = h[1]; return; }
+        if (/people|agent|officer|name/i.test(head) || /^(sources|references|see also|external links)$/i.test(head)) return;
+        const t = clean(ln.replace(/^\*\s*/, '')).replace(/^Summary\s*:\s*/i, ''); if (t && !/^\[\[Category/i.test(ln) && !/^Category:/i.test(t)) parts.push(t);
+      });
+      return { facts, links, text: [...new Set(parts)].slice(0, 8) };
+    });
+  const iceView = (title) => ({ title, sub: 'from The ICE List', build: (b) => {
+    const { E, section } = hsUI;
+    const s1 = section(b, 'What The ICE List says', 'Loading…');
+    icePage(title).then((pg) => {
+      s1.querySelector('.note').textContent = 'Pulled from theicelist.org. Names of people and agents are left out on this site.';
+      if (pg.facts.length) { const dl = E('dl', 'hs-icefacts'); pg.facts.forEach(([k, v]) => dl.append(E('dt', null, k), E('dd', null, v))); s1.appendChild(dl); }
+      pg.text.forEach((t) => s1.appendChild(E('p', 'hs-wiki', t)));
+      if (pg.links.length) {
+        const s2 = section(b, 'Its sources');
+        const ul = E('ul', 'hs-steps'); pg.links.forEach((x) => { const li = E('li'); const a = E('a', null, clean(x.text) || x.url); a.href = x.url; a.target = '_blank'; a.rel = 'noopener'; li.appendChild(a); ul.appendChild(li); }); s2.appendChild(ul);
+      }
+      const a = E('a', null, 'Page on theicelist.org ›'); a.href = 'https://theicelist.org/index.php?title=' + enc(title.replace(/ /g, '_')); a.target = '_blank'; a.rel = 'noopener'; s1.appendChild(a);
+    }).catch(() => { s1.querySelector('.note').textContent = 'Could not reach The ICE List right now.'; });
+  } });
   let wiki = { q: '', items: [] }, wikiT = 0;
   const fetchWiki = (q) => {
     clearTimeout(wikiT);
-    if (q.trim().length < 3) { wiki = { q, items: [] }; return; }
+    if (q.trim().length < 3) { wiki = { q, items: [] }; ice = { q, items: [] }; return; }
     wikiT = setTimeout(() => {
       fetch('https://en.wikipedia.org/w/rest.php/v1/search/page?limit=3&q=' + enc(q))
         .then((r) => r.json())
@@ -1743,12 +1829,18 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
           wiki = { q, items: (j.pages || []).map((pg) => ({ k: 'Wikipedia', t: pg.title, d: pg.description || String(pg.excerpt || '').replace(/<[^>]+>/g, '').slice(0, 110), go: () => webPanel(q, pg.key, pg.title) })) };
           res = withWeb(q); show();
         }).catch(() => {});
+      iceList(q).then((list) => {
+        if (input.value !== q) return;
+        ice = { q, items: list.slice(0, 6).map((x) => ({ k: 'The ICE List', t: x.title, d: 'Shows what The ICE List says, here on this site', go: () => hsShow(iceView(x.title)) })) };
+        res = withWeb(q); show();
+      }).catch(() => {});
     }, 350);
   };
   const withWeb = (q) => {
     const local = search(q);
     if (norm(q).length < 2) return local;
-    const outside = (wiki.q === q ? wiki.items : []).concat([{ k: 'Web', t: 'Search everywhere for "' + q.trim() + '"', d: 'News, The ICE List, Reddit and the web, about ICE in Washington', go: () => webPanel(q) }]);
+    const loc = looksLikeName(q) ? [{ k: 'Detainee locator', t: 'Look up "' + q.trim() + '" in the ICE detainee locator', d: 'Official ICE search: name plus country of birth, or A-number', go: () => window.open(LOCATOR, '_blank', 'noopener') }] : [];
+    const outside = loc.concat(ice.q === q ? ice.items : []).concat(wiki.q === q ? wiki.items : []).concat([{ k: 'Web', t: 'Look up "' + q.trim() + '" on The ICE List and Wikipedia', d: 'Pulls what they have and shows it here', go: () => webPanel(q) }]);
     outside[0].first = true;
     return local.concat(outside);
   };
@@ -1762,7 +1854,7 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
       list.appendChild(li);
     }
     res.forEach((it, i) => {
-      if (it.first) { const sp = document.createElement('li'); sp.className = 'sep'; sp.setAttribute('role', 'presentation'); sp.textContent = 'From other websites'; list.appendChild(sp); }
+      if (it.first) { const sp = document.createElement('li'); sp.className = 'sep'; sp.setAttribute('role', 'presentation'); sp.textContent = 'Other websites (only when you choose this)'; list.appendChild(sp); }
       const li = document.createElement('li'); li.id = 'hs-gs-o' + i; li.setAttribute('role', 'option'); li.setAttribute('aria-selected', String(i === sel));
       const k = document.createElement('span'); k.className = 'k'; k.textContent = it.k;
       const t = document.createElement('span'); t.className = 't'; t.textContent = it.t;
@@ -1775,7 +1867,7 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
     if (sel >= 0) input.setAttribute('aria-activedescendant', 'hs-gs-o' + sel); else input.removeAttribute('aria-activedescendant');
   };
   const pick = (i) => { const it = res[i]; if (!it) return; close(); input.blur(); it.go(); };
-  input.addEventListener('input', () => { res = withWeb(input.value); sel = -1; show(); fetchWiki(input.value); });
+  input.addEventListener('input', () => { res = withWeb(input.value); sel = -1; show(); });
   input.addEventListener('focus', () => { if (input.value.trim()) { res = withWeb(input.value); show(); } });
   input.addEventListener('blur', () => setTimeout(close, 120));
   input.addEventListener('keydown', (e) => {
