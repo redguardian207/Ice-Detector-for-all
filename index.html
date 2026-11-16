@@ -193,6 +193,8 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
 .hs-big .l { font-size: var(--cds-font-size-body); max-width: 40ch; }
 .hs-sub { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); max-width: 80ch; }
 .hs-outlook h3 { margin: 0; font-size: var(--cds-font-size-body); font-weight: 600; }
+.hs-more { justify-self: start; font: inherit; font-size: var(--cds-font-size-caption); color: var(--color-fg); background: none; border: 1px solid var(--color-border-line); border-radius: 999px; padding: 2px 12px; cursor: pointer; }
+.hs-zero summary { cursor: pointer; }
 .hs-ok { color: var(--color-ok); font-weight: 600; } .hs-no { color: var(--color-bad); font-weight: 600; }
 .hs-dlg .hs-chart { min-height: 0; }
 .hs-dlg .hs-tiles { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: var(--cds-gap-sm); }
@@ -258,26 +260,27 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
   <section class="hs-card" id="outlook">
     <h2>Outlook: where past reports point next</h2>
-    <p class="note">A forecast built only from past reports. It knows nothing about planned operations. Each part shows only when the past data supports it, and it says how often this method would have been right before.</p>
+    <p class="note">Built only from past reports. It knows nothing about planned operations.</p>
     <div class="hs-outlook" data-draw="outlook" data-source="incidents"></div>
   </section>
 
   <section class="hs-card" id="patterns">
     <h2>Patterns</h2>
-    <p class="note">Checked automatically each time the data updates. A pattern shows only when the numbers support it. Small numbers can still mislead, so each one says how many reports it rests on.</p>
+    <p class="note">A pattern shows only when the numbers support it. Each one says how many reports it rests on.</p>
     <ul class="hs-pats" data-draw="patterns" data-source="incidents"></ul>
   </section>
 
   <section class="hs-card" id="towns">
     <h2>Where activity has been reported most</h2>
-    <p class="note">Ranked by a score that counts every report and gives recent ones more weight. A report loses half its weight every 90 days.</p>
+    <p class="note">Score counts every report. A report loses half its weight every 90 days.</p>
     <div class="hs-wrap">
       <table class="hs-rank" data-source="breakdowns" data-row-key="k">
         <thead><tr><th data-field="key">Town</th><th data-field="score">Score</th><th class="n" data-field="n">Reports</th><th class="n" data-field="recent">Last 90 days</th><th data-field="last">Most recent</th></tr></thead>
         <tbody data-draw="towns"></tbody>
       </table>
     </div>
-    <p class="note">Major cities in this area with no reports on The ICE List: <span data-draw="zero" data-source="breakdowns">—</span>.</p>
+    <button type="button" class="hs-more" id="hs-towns-more" hidden></button>
+    <details class="note hs-zero"><summary>Major cities with no reports: <span id="hs-zero-n">—</span></summary><span data-draw="zero" data-source="breakdowns">—</span>.</details>
   </section>
 
   <div class="hs-grid">
@@ -636,8 +639,16 @@ dash.draw('towns', (tbody) => {
   tbody.replaceChildren();
   if (!t) return;
   const max = d3.max(t, (x) => x.score) || 1;
-  for (const r of t) {
+  const TOP = 10;
+  const more = document.getElementById('hs-towns-more');
+  if (more) {
+    more.hidden = t.length <= TOP;
+    more.textContent = window.hsTownsAll ? 'Show top ' + TOP + ' only' : 'Show all ' + t.length + ' towns';
+    more.onclick = (e) => { e.stopPropagation(); window.hsTownsAll = !window.hsTownsAll; [...tbody.children].forEach((tr, i) => { tr.hidden = i >= TOP && !window.hsTownsAll; }); more.textContent = window.hsTownsAll ? 'Show top ' + TOP + ' only' : 'Show all ' + t.length + ' towns'; };
+  }
+  t.forEach((r, i) => {
     const tr = document.createElement('tr');
+    if (i >= TOP && !window.hsTownsAll) tr.hidden = true;
     tr.dataset.key = r.k;
     const c1 = document.createElement('td'); c1.textContent = r.key;
     const c2 = document.createElement('td');
@@ -652,7 +663,7 @@ dash.draw('towns', (tbody) => {
     const c5 = document.createElement('td'); c5.textContent = r.last;
     tr.append(c1, c2, c3, c4, c5);
     tbody.appendChild(tr);
-  }
+  });
 });
 dash.draw('zero', (el) => {
   const t = hsRows('town');
@@ -660,6 +671,7 @@ dash.draw('zero', (el) => {
   const seen = new Set(t.map((x) => x.key));
   const z = hsWatch().filter((w) => !seen.has(w));
   el.textContent = z.length ? z.join(', ') : 'none';
+  const zn = document.getElementById('hs-zero-n'); if (zn) zn.textContent = String(z.length);
 });
 
 // Bar lists
@@ -1280,18 +1292,22 @@ dash.draw('list', (tbody) => {
     big.append(E('span', 'v', Math.round(o.p7 * 100) + '%'), E('span', 'l', 'chance of at least one new report in the next 7 days, if the pace of the last 90 days holds.'));
     host.appendChild(big);
     host.appendChild(E('p', 'hs-sub', `${plural(o.rec.length, 'report')} in the last 90 days, about ${d3.format('.1f')(o.rate * 30)} a month.` + (o.trend && o.trend.chip[1] !== 'weak' ? ' ' + o.trend.head : '')));
+    const TOPN = 6;
+    const ox = full ? o : Object.assign({}, o, { towns: o.towns.slice(0, TOPN) });
+    const rest = o.towns.slice(TOPN);
     const tw = E('div'); tw.style.display = 'grid'; tw.style.gap = 'var(--cds-gap-sm)';
     if (o.pass) {
       tw.appendChild(E('h3', null, 'Most likely town for the next report'));
-      tw.appendChild(townBars(o, (k) => go(V.town(k), !dlg.open)));
-      tw.appendChild(E('p', 'hs-sub', 'Share of the next report each town would get if it follows past reports, with recent ones counting more. Towns with no past reports are not listed but can still be affected.'));
+      tw.appendChild(townBars(ox, (k) => go(V.town(k), !dlg.open)));
+      tw.appendChild(E('p', 'hs-sub', (!full && rest.length ? `Plus ${rest.length} more towns at ${Math.round(rest[0].share * 100)}% or less (see Details). ` : '') + 'Share of the next report each town would get if it follows past reports. Towns with no past reports can still be affected.'));
     } else {
       tw.appendChild(E('h3', null, 'Most likely town'));
       tw.appendChild(E('p', 'hs-sub', 'Not shown. Past reports have not picked the next town better than a guess, so a ranking here would mislead.'));
     }
-    const bt = E('p', 'hs-sub'); bt.append(E('span', o.pass ? 'hs-ok' : 'hs-no', o.pass ? 'Beat a guess. ' : 'Did not beat a guess. '), document.createTextNode(btLine(o)));
+    const bt = E('p', 'hs-sub'); bt.append(E('span', o.pass ? 'hs-ok' : 'hs-no', o.pass ? 'Beat a guess. ' : 'Did not beat a guess. '), document.createTextNode(full ? btLine(o) : (o.tests.length < 5 ? btLine(o) : `Top pick was right ${pctOf(o.hits, o.tests.length)} of the time on ${o.tests.length} past reports, vs about ${Math.round(o.base * 100)}% for a random pick.`)));
     tw.appendChild(bt);
     host.appendChild(tw);
+    if (!full && !o.pats.length) return;
     const wh = E('div'); wh.style.display = 'grid'; wh.style.gap = 'var(--cds-gap-xs)';
     wh.appendChild(E('h3', null, 'When and what kind of place'));
     wh.appendChild(o.pats.length ? patList(o.pats) : E('p', 'hs-sub', 'No time, day or place pattern is strong enough to show yet.'));
@@ -1347,7 +1363,7 @@ dash.draw('list', (tbody) => {
     h2.replaceWith(hd); hd.appendChild(h2);
     const btn = E('button', 'hs-dive', 'Details ›'); btn.type = 'button'; btn.setAttribute('aria-label', 'Details: ' + h2.textContent);
     hd.appendChild(btn);
-    card.addEventListener('click', (e) => { if (e.target.closest('a, input, select, textarea')) return; hsDive(key); });
+    card.addEventListener('click', (e) => { if (e.target.closest('a, input, select, textarea, summary, details, .hs-more')) return; hsDive(key); });
   };
   hook('#outlook', 'outlook'); hook('#patterns', 'patterns'); hook('#towns', 'towns'); hook('#places', 'places'); hook('#kinds', 'kinds'); hook('#weekdays', 'weekdays'); hook('#hours', 'hours'); hook('#months', 'months');
 
