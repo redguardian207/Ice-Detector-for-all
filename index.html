@@ -171,6 +171,12 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
 .hs-dlg-btn { font: inherit; font-size: var(--cds-font-size-caption); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); color: var(--color-fg); cursor: pointer; white-space: nowrap; }
 .hs-dlg-sub { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .hs-dlg-body { display: grid; gap: var(--cds-gap-md); }
+.hs-dlg-body > .hs-card > h2:first-child, .hs-dlg-body > .hs-card > .hs-cardhead:first-child { display: none; }
+.hs-dlg-body > details[open] > summary { display: none; }
+.hs-webbtns { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); }
+.hs-webbtns a { font-size: var(--cds-font-size-caption); color: var(--color-fg); border: 1px solid var(--color-border-line); border-radius: 999px; padding: 4px 12px; text-decoration: none; }
+.hs-webbtns a:hover { background: var(--color-panel); }
+.hs-wiki { margin: 0; max-width: 70ch; line-height: 1.5; }
 .hs-dsec { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); min-width: 0; }
 .hs-dsec h3 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: 600; }
 .hs-dsec .note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
@@ -1354,6 +1360,10 @@ dash.draw('list', (tbody) => {
   });
 
   window.hsDive = (key, arg) => { const f = V[key]; if (f) go(f(arg), true); };
+  V.date = (d) => listView('Reports on ' + hsDate(d), (r) => r.date === d);
+  V.report = (id) => { const r = scoped().find((x) => x.id === id); return listView(r ? r.title + ', ' + r.town : 'Report', (x) => x.id === id, r ? hsDate(r.date) : ''); };
+  window.hsShow = (v) => go(v, true);
+  window.hsUI = { E, section, reportTable, dlg };
 
   // Hook up the main page
   const hook = (sel, key) => {
@@ -1573,7 +1583,21 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
   if (!input || !list) return;
   const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
   const flash = (el) => { if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.remove('hs-flash'); void el.offsetWidth; el.classList.add('hs-flash'); };
-  const goSection = (id) => () => flash(document.getElementById(id));
+  // Open a part of the page in the pop-up panel instead of scrolling to it; it goes back in place when the panel closes
+  const showSection = (id, title) => {
+    const el = document.getElementById(id);
+    if (!el || !window.hsShow) { flash(el); return; }
+    const ph = document.createComment('hs-' + id); el.before(ph);
+    const wasOpen = el.tagName === 'DETAILS' ? el.open : null;
+    if (wasOpen === false) el.open = true;
+    const dlg = hsUI.dlg;
+    const restore = () => { if (wasOpen === false) el.open = false; ph.replaceWith(el); dlg.removeEventListener('close', restore); };
+    dlg.addEventListener('close', restore);
+    hsShow({ title, build: (b) => b.appendChild(el) });
+  };
+  const DIVE = { outlook: 'outlook', patterns: 'patterns', towns: 'towns', places: 'places', kinds: 'kinds', weekdays: 'weekdays', hours: 'hours', months: 'months', list: 'all' };
+  const goSection = (id, title) => () => (DIVE[id] ? hsDive(DIVE[id]) : showSection(id, title));
+  const allData = () => { dash.setParams({ area: 'all', evidence: 'all' }); };
   const SECTIONS = [
     ['outlook', 'Outlook: where past reports point next', 'forecast prediction next week chance odds likely'],
     ['patterns', 'Patterns', 'trend rising falling cluster busiest'],
@@ -1594,9 +1618,9 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
   const setArea = (a) => { dash.setParams({ area: a }); };
   const build = () => {
     const items = [];
-    items.push({ k: 'Area', t: 'All of Washington', d: 'Show every report in the state', s: 'washington state wa all statewide', go: () => { setArea('all'); flash(document.getElementById('totals')); } });
+    items.push({ k: 'Area', t: 'All of Washington', d: 'Show every report in the state', s: 'washington state wa all statewide', go: () => { setArea('all'); hsDive('towns'); } });
     for (const [key, r] of Object.entries(hsRegions)) {
-      items.push({ k: 'Region', t: r.name, d: r.cities.slice(0, 6).join(', ') + ' and more', s: r.name + ' ' + r.cities.join(' '), go: () => { setArea(key); flash(document.getElementById('totals')); } });
+      items.push({ k: 'Region', t: r.name, d: r.cities.slice(0, 6).join(', ') + ' and more', s: r.name + ' ' + r.cities.join(' '), go: () => { setArea(key); hsDive('towns'); } });
     }
     const d = dash.data('incidents');
     const rows = d.status === 'ok' ? d.data : [];
@@ -1607,19 +1631,28 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
       const reg = (rows.find((r) => r.town === town) || {}).area || hsRegionOf(town);
       const regName = reg ? hsRegions[reg].name : 'Washington';
       items.push({ k: 'City', t: town + ', WA', d: (n ? n + (n === 1 ? ' report' : ' reports') : 'No reports so far') + ' · ' + regName, s: town, rank: n ? 2 : 1,
-        go: () => { if (reg) setArea(reg); if (n) hsDive('town', town); else flash(document.getElementById('towns')); } });
+        go: () => { allData(); hsDive('town', town); } });
     }
+    const dateWords = (iso) => {
+      const dt = new Date(iso + 'T00:00:00Z');
+      const [y, m, dd] = iso.split('-');
+      return [iso, d3.utcFormat('%B %-d %Y')(dt), d3.utcFormat('%b %-d %Y')(dt), d3.utcFormat('%A')(dt), (+m) + '/' + (+dd), (+m) + '/' + (+dd) + '/' + y, (+m) + '/' + (+dd) + '/' + y.slice(2)].join(' ');
+    };
     for (const r of rows) {
-      items.push({ k: 'Report', t: r.title + ' · ' + r.town, d: hsDate(r.date) + (r.place ? ' · ' + r.place : '') + ' · ' + r.source_kind, s: [r.title, r.town, r.place, r.place_type, r.source_kind, r.date].join(' '), rank: 0,
-        go: () => {
-          setArea('all'); dash.setParams({ evidence: 'all' });
-          const q = document.getElementById('hs-search'); if (q) { q.value = r.town; dash.draw('list'); }
-          setTimeout(() => flash(document.querySelector('#list tr[data-key="' + r.id + '"]') || document.getElementById('list')), 150);
-        } });
+      items.push({ k: 'Report', t: r.title + ' · ' + r.town, d: hsDate(r.date) + (r.place ? ' · ' + r.place : '') + ' · ' + r.source_kind, s: [r.title, r.town, r.place, r.place_type, r.source_kind, dateWords(r.date)].join(' '), rank: 0,
+        go: () => { allData(); hsDive('report', r.id); } });
     }
-    for (const [id, t, kw] of SECTIONS) items.push({ k: 'Section', t, d: 'Go to this part of the page', s: t + ' ' + kw, rank: 3, go: goSection(id) });
+    // Dates: every day and month that has reports
+    for (const [iso, n] of d3.rollups(rows, (v) => v.length, (r) => r.date)) {
+      items.push({ k: 'Date', t: 'Reports on ' + hsDate(iso), d: n + (n === 1 ? ' report' : ' reports'), s: dateWords(iso), rank: 1, go: () => { allData(); hsDive('date', iso); } });
+    }
+    for (const [mk, n] of d3.rollups(rows, (v) => v.length, (r) => r.date.slice(0, 7))) {
+      const dt = new Date(mk + '-01T00:00:00Z');
+      items.push({ k: 'Month', t: 'Reports in ' + d3.utcFormat('%B %Y')(dt), d: n + (n === 1 ? ' report' : ' reports'), s: [mk, d3.utcFormat('%B %Y')(dt), d3.utcFormat('%b %Y')(dt), (+mk.slice(5)) + '/' + mk.slice(0, 4)].join(' '), rank: 2, go: () => { allData(); hsDive('month', mk); } });
+    }
+    for (const [id, t, kw] of SECTIONS) items.push({ k: 'Section', t, d: 'Open this part of the page', s: t + ' ' + kw, rank: 3, go: goSection(id, t) });
     if (window.hsCams) for (const b of document.querySelectorAll('.hs-camtab')) {
-      items.push({ k: 'Cameras', t: 'Road cameras: ' + b.textContent, d: 'Live WSDOT traffic images', s: 'camera cameras traffic ' + b.textContent + ' ' + b.dataset.v, rank: 1, go: () => { b.click(); flash(document.getElementById('cameras')); } });
+      items.push({ k: 'Cameras', t: 'Road cameras: ' + b.textContent, d: 'Live WSDOT traffic images', s: 'camera cameras traffic ' + b.textContent + ' ' + b.dataset.v, rank: 1, go: () => { b.click(); showSection('cameras', 'Live WSDOT road cameras'); } });
     }
     document.querySelectorAll('#help li a, #locate a.hs-btn').forEach((a) => {
       items.push({ k: 'Help link', t: a.textContent, d: 'Opens ' + new URL(a.href).hostname, s: a.textContent + ' ' + (a.parentElement.textContent || '') + ' help', rank: 2, go: () => window.open(a.href, '_blank', 'noopener') });
@@ -1657,15 +1690,46 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
   };
   // Results from other websites: live Wikipedia matches plus links that run the search on news and other sites
   const enc = encodeURIComponent;
-  const webLinks = (q) => {
-    const wa = /washington|\bwa\b/i.test(q) ? q : q + ' Washington';
-    const open = (u) => () => window.open(u, '_blank', 'noopener');
-    return [
-      { k: 'Web', t: 'News: ' + q, d: 'Google News results for this search', go: open('https://news.google.com/search?q=' + enc(wa) + '&hl=en-US&gl=US&ceid=US:en') },
-      { k: 'Web', t: 'The ICE List: ' + q, d: 'Search theicelist.org', go: open('https://theicelist.org/index.php?title=Special:Search&fulltext=1&search=' + enc(q)) },
-      { k: 'Web', t: 'Reddit: ' + q, d: 'Posts that mention this', go: open('https://www.reddit.com/search/?q=' + enc(wa)) },
-      { k: 'Web', t: 'Web search: ' + q, d: 'DuckDuckGo results', go: open('https://duckduckgo.com/?q=' + enc(wa)) },
-    ];
+  // Web searches stay on the site's subject: ICE activity in Washington
+  const scopeQ = (q) => {
+    let x = q.trim();
+    if (!/\b(ice|immigration|border patrol|deport\w*|migra)\b/i.test(x)) x += ' ICE';
+    if (!/washington|\bwa\b/i.test(x)) x += ' Washington';
+    return x;
+  };
+  const webBtns = (q) => {
+    const w = scopeQ(q);
+    const box = hsUI.E('div', 'hs-webbtns');
+    [['News', 'https://news.google.com/search?q=' + enc(w) + '&hl=en-US&gl=US&ceid=US:en'],
+      ['The ICE List', 'https://theicelist.org/index.php?title=Special:Search&fulltext=1&search=' + enc(q.trim())],
+      ['Reddit', 'https://www.reddit.com/search/?q=' + enc(w)],
+      ['Web', 'https://duckduckgo.com/?q=' + enc(w)]].forEach(([t, u]) => { const a = hsUI.E('a', null, t + ' ›'); a.href = u; a.target = '_blank'; a.rel = 'noopener'; box.appendChild(a); });
+    return box;
+  };
+  const siteRows = (q) => {
+    const d = dash.data('incidents');
+    if (d.status !== 'ok') return [];
+    const words = norm(q).split(' ').filter((w) => w.length > 2 && !STOP.has(w));
+    if (!words.length) return [];
+    return d.data.filter((r) => { const h = norm([r.title, r.town, r.place, r.place_type, r.date].join(' ')); return words.some((w) => h.includes(w)); });
+  };
+  // One panel for a search or a Wikipedia article: summary, matching reports on this site, and searches on other sites
+  const webPanel = (q, wikiKey, wikiTitle) => {
+    allData();
+    hsShow({ title: wikiTitle || 'Search: ' + q.trim(), sub: 'about ICE activity in Washington', build: (b) => {
+      const { E, section, reportTable } = hsUI;
+      if (wikiKey) {
+        const s1 = section(b, 'From Wikipedia');
+        const p = E('p', 'hs-wiki', 'Loading…'); s1.appendChild(p);
+        fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + enc(wikiKey))
+          .then((r) => r.json())
+          .then((j) => { p.textContent = j.extract || 'No summary available.'; const a = E('a', null, 'Read the full article on Wikipedia ›'); a.href = 'https://en.wikipedia.org/wiki/' + enc(wikiKey); a.target = '_blank'; a.rel = 'noopener'; s1.appendChild(a); })
+          .catch(() => { p.textContent = 'Could not load the summary.'; });
+      }
+      const rows = siteRows(wikiTitle || q);
+      section(b, 'Reports on this site that match', rows.length ? null : 'No reports on this site mention this.').appendChild(reportTable(rows));
+      section(b, 'Search other websites', 'Each opens in a new tab, searching for: ' + scopeQ(q)).appendChild(webBtns(q));
+    } });
   };
   let wiki = { q: '', items: [] }, wikiT = 0;
   const fetchWiki = (q) => {
@@ -1676,7 +1740,7 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
         .then((r) => r.json())
         .then((j) => {
           if (input.value !== q) return;
-          wiki = { q, items: (j.pages || []).map((pg) => ({ k: 'Wikipedia', t: pg.title, d: pg.description || String(pg.excerpt || '').replace(/<[^>]+>/g, '').slice(0, 110), go: () => window.open('https://en.wikipedia.org/wiki/' + enc(pg.key), '_blank', 'noopener') })) };
+          wiki = { q, items: (j.pages || []).map((pg) => ({ k: 'Wikipedia', t: pg.title, d: pg.description || String(pg.excerpt || '').replace(/<[^>]+>/g, '').slice(0, 110), go: () => webPanel(q, pg.key, pg.title) })) };
           res = withWeb(q); show();
         }).catch(() => {});
     }, 350);
@@ -1684,7 +1748,7 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
   const withWeb = (q) => {
     const local = search(q);
     if (norm(q).length < 2) return local;
-    const outside = (wiki.q === q ? wiki.items : []).concat(webLinks(q.trim()));
+    const outside = (wiki.q === q ? wiki.items : []).concat([{ k: 'Web', t: 'Search everywhere for "' + q.trim() + '"', d: 'News, The ICE List, Reddit and the web, about ICE in Washington', go: () => webPanel(q) }]);
     outside[0].first = true;
     return local.concat(outside);
   };
@@ -1698,7 +1762,7 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
       list.appendChild(li);
     }
     res.forEach((it, i) => {
-      if (it.first) { const sp = document.createElement('li'); sp.className = 'sep'; sp.setAttribute('role', 'presentation'); sp.textContent = 'From other websites (opens a new tab)'; list.appendChild(sp); }
+      if (it.first) { const sp = document.createElement('li'); sp.className = 'sep'; sp.setAttribute('role', 'presentation'); sp.textContent = 'From other websites'; list.appendChild(sp); }
       const li = document.createElement('li'); li.id = 'hs-gs-o' + i; li.setAttribute('role', 'option'); li.setAttribute('aria-selected', String(i === sel));
       const k = document.createElement('span'); k.className = 'k'; k.textContent = it.k;
       const t = document.createElement('span'); t.className = 't'; t.textContent = it.t;
