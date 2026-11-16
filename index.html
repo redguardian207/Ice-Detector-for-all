@@ -1771,9 +1771,10 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
       .sort((a, b) => b.localeCompare(a))
       .map((t) => ({ title: t, url: 'https://theicelist.org/index.php?title=' + enc(t.replace(/ /g, '_')) })));
   let ice = { q: '', items: [] };
-  // Read one ICE List page and show it here as plain text. Fields that name agents or officers are left out.
-  const SKIP = /^(agents_involved|agents|agent|officers|officer|image|caption|title)$/;
-  const LABEL = { people_affected: 'People affected', people: 'People affected', date: 'Date', city: 'City', state: 'State', agencies: 'Agency', operation_type: 'What happened', status: 'Status', verification: 'Verification', injuries: 'Injuries', deaths: 'Deaths', location: 'Location', place: 'Place' };
+  // Read one ICE List page and show it here as plain text. Names of people and agents stay hidden until the visitor asks to see them.
+  const SKIP = /^(image|caption|title)$/;
+  const NAMED = /^(people_affected|people|agents_involved|agents|agent|officers|officer)$/;
+  const LABEL = { people_affected: 'People affected', people: 'People affected', agents_involved: 'Agents involved', agents: 'Agents involved', agent: 'Agents involved', officers: 'Officers involved', officer: 'Officers involved', date: 'Date', city: 'City', state: 'State', agencies: 'Agency', operation_type: 'What happened', status: 'Status', verification: 'Verification', injuries: 'Injuries', deaths: 'Deaths', location: 'Location', place: 'Place' };
   const clean = (t) => String(t || '')
     .replace(/<ref[^>]*\/>/g, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/g, '').replace(/<[^>]+>/g, '')
     .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1')
@@ -1785,23 +1786,24 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
       const pg = j.query && j.query.pages && j.query.pages[0];
       const src = pg && pg.revisions ? pg.revisions[0].slots.main.content : '';
       const box = (src.match(/^\{\{Infobox[\s\S]*?\n\}\}/) || [''])[0];
-      const facts = []; const links = [];
+      const facts = []; const links = []; const named = [];
       box.split(/\n\|/).slice(1).forEach((line) => {
         const m = line.match(/^\s*([\w ]+?)\s*=\s*([\s\S]*)$/); if (!m) return;
         const k = m[1].trim().toLowerCase().replace(/ /g, '_');
         if (k === 'key_sources' || k === 'sources') { (m[2].match(/\[https:\/\/[^\s\]]+[^\]]*\]/g) || []).forEach((x) => { const mm = x.match(/\[(https:\/\/\S+)\s*([^\]]*)\]/); links.push({ url: mm[1], text: mm[2] || mm[1] }); }); return; }
         if (SKIP.test(k)) return;
-        const v = clean(m[2].replace(/\n\}\}$/, '')); if (v && LABEL[k]) facts.push([LABEL[k], v]);
+        const v = clean(m[2].replace(/\n\}\}$/, '')); if (v && LABEL[k]) { if (!NAMED.test(k)) facts.push([LABEL[k], v]); else if (!/^(not |none|unknown|n\/a)/i.test(v)) named.push([LABEL[k], v]); }
       });
       const body = src.slice(box.length);
-      const parts = []; let head = 'Summary';
+      const parts = []; const namedText = []; let head = 'Summary';
       body.split('\n').forEach((ln) => {
         const h = ln.match(/^==+\s*(.*?)\s*==+\s*$/);
         if (h) { head = h[1]; return; }
-        if (/agent|officer/i.test(head) || /^(sources|references|see also|external links)$/i.test(head)) return;
-        const t = clean(ln.replace(/^\*\s*/, '')).replace(/^Summary\s*:\s*/i, ''); if (t && !/^\[\[Category/i.test(ln) && !/^Category:/i.test(t)) parts.push(t);
+        if (/^(sources|references|see also|external links)$/i.test(head)) return;
+        const t = clean(ln.replace(/^\*\s*/, '')).replace(/^Summary\s*:\s*/i, ''); if (!t || /^\[\[Category/i.test(ln) || /^Category:/i.test(t)) return;
+        if (/people|agent|officer|named|identif/i.test(head)) namedText.push(head + ': ' + t); else parts.push(t);
       });
-      return { facts, links, text: [...new Set(parts)].slice(0, 8) };
+      return { facts, links, named, namedText: [...new Set(namedText)].slice(0, 8), text: [...new Set(parts)].slice(0, 8) };
     });
   const iceView = (title) => ({ title, sub: 'from The ICE List', build: (b) => {
     const { E, section } = hsUI;
@@ -1810,6 +1812,15 @@ window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
       s1.querySelector('.note').textContent = 'Pulled from theicelist.org.';
       if (pg.facts.length) { const dl = E('dl', 'hs-icefacts'); pg.facts.forEach(([k, v]) => dl.append(E('dt', null, k), E('dd', null, v))); s1.appendChild(dl); }
       pg.text.forEach((t) => s1.appendChild(E('p', 'hs-wiki', t)));
+      if (pg.named.length || pg.namedText.length) {
+        const sn = section(b, 'People and agents named', 'The ICE List names the people affected or the agents involved. Hidden until you choose to see them.');
+        const bx = E('div', 'hs-webbtns'); const bt = E('button', 'hs-more', 'Show names'); bt.type = 'button'; bx.appendChild(bt); sn.appendChild(bx);
+        bt.addEventListener('click', () => {
+          bx.remove();
+          if (pg.named.length) { const dl = E('dl', 'hs-icefacts'); pg.named.forEach(([k, v]) => dl.append(E('dt', null, k), E('dd', null, v))); sn.appendChild(dl); }
+          pg.namedText.forEach((t) => sn.appendChild(E('p', 'hs-wiki', t)));
+        });
+      }
       if (pg.links.length) {
         const s2 = section(b, 'Its sources');
         const ul = E('ul', 'hs-steps'); pg.links.forEach((x) => { const li = E('li'); const a = E('a', null, clean(x.text) || x.url); a.href = x.url; a.target = '_blank'; a.rel = 'noopener'; li.appendChild(a); ul.appendChild(li); }); s2.appendChild(ul);
