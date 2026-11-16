@@ -1,0 +1,1674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Washington ICE Hotspots</title>
+<meta name="description" content="Where ICE activity has been reported across Washington State, from Seattle and Tacoma to Spokane, Yakima and Vancouver. Community reports and news, updated every hour.">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="Washington ICE Hotspots">
+<meta property="og:description" content="Where ICE activity has been reported across Washington State. Community reports and news, updated every hour.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+.hs { display: grid; gap: var(--cds-gap-xl); font-family: var(--font-anthropic-sans); max-width: 72rem; margin-inline: auto; }
+.hs-head { display: grid; gap: var(--cds-gap-sm); }
+.hs-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+.hs-take { margin: 0; font-size: var(--cds-font-size-body); max-width: 70ch; }
+.hs .hs-take b { font-weight: 600; }
+.hs-clock { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.hs-clock span { color: var(--color-fg); }
+.hs-caveat { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); max-width: 80ch; }
+.hs-caveat b { color: var(--color-warn); }
+.hs-controls { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); align-items: center; }
+.hs-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); overflow: hidden; }
+.hs-seg button { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); background: var(--color-bg); color: var(--color-fg); border: 0; cursor: pointer; }
+.hs-seg button + button { border-left: 1px solid var(--color-border-line); }
+.hs-seg button[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); }
+.hs-seg.many { flex-wrap: wrap; border: 0; overflow: visible; gap: 6px; }
+.hs-seg.many button, .hs-seg.many button + button { border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.hs-gs { position: relative; max-width: 40rem; }
+.hs-gs input { width: 100%; box-sizing: border-box; font: inherit; font-size: var(--cds-font-size-body); padding: 10px 14px; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); color: var(--color-fg); }
+.hs-gs input:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 1px; }
+.hs-gs-list { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); box-shadow: 0 8px 24px rgba(0,0,0,.18); max-height: 60vh; overflow-y: auto; }
+.hs-gs-list[hidden] { display: none; }
+.hs-gs-list li { padding: 8px 10px; border-radius: 4px; cursor: pointer; display: grid; gap: 2px; }
+.hs-gs-list li[aria-selected="true"], .hs-gs-list li:hover { background: var(--color-bg); }
+.hs-gs-list .k { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); text-transform: uppercase; letter-spacing: .04em; }
+.hs-gs-list .t { font-weight: 600; }
+.hs-gs-list .d { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-gs-list .none { cursor: default; color: var(--color-fg-muted); }
+.hs-flash { animation: hsflash 1.6s ease-out; }
+@keyframes hsflash { 0% { box-shadow: 0 0 0 3px var(--color-fg); } 100% { box-shadow: 0 0 0 3px transparent; } }
+.hs-seg button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: -2px; }
+.hs-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: var(--cds-gap-md); }
+.hs-tile, .hs-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); min-width: 0; }
+.hs-tile { display: grid; gap: var(--cds-gap-xs); align-content: start; }
+.hs-tile .v { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; min-height: 1.3em; }
+.hs-tile .l { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
+.hs-card { display: grid; gap: var(--cds-gap-sm); align-content: start; }
+.hs-card h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+.hs-card .note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-wrap { overflow-x: auto; }
+.hs table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+.hs th, .hs td { text-align: left; padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+.hs th { color: var(--color-fg-muted); font-weight: var(--cds-font-weight-medium); white-space: nowrap; }
+.hs td.n, .hs th.n { text-align: right; }
+.hs-list td:first-child { white-space: nowrap; }
+.hs th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.hs-scorebar { display: flex; align-items: center; gap: var(--cds-gap-sm); min-width: 8rem; }
+.hs-scorebar span.b { display: block; height: 0.6rem; border-radius: 2px; }
+.hs-rank td:first-child { font-weight: 600; }
+.hs-bars { display: grid; gap: var(--cds-gap-sm); min-height: 6rem; }
+.hs-bar { display: grid; grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr) 2.5rem; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-caption); }
+.hs-bar .track { height: 0.75rem; }
+.hs-bar .fill { height: 100%; border-radius: 2px; }
+.hs-bar .c { text-align: right; font-variant-numeric: tabular-nums; }
+.hs-chart { position: relative; min-height: 180px; }
+.hs-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); white-space: nowrap; z-index: 2; }
+.hs-tip .d { color: var(--cds-text-secondary); }
+.hs-list { max-height: 28rem; overflow: auto; }
+.hs-list th { position: sticky; top: 0; background: var(--color-panel); }
+.hs-search { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); width: min(100%, 18rem); }
+.hs-kind { display: inline-block; padding: 0 var(--cds-pad-xs); border-radius: 3px; border: 1px solid var(--color-border-line); white-space: nowrap; }
+.hs-kind.ev { color: var(--color-ok); }
+.hs a { color: inherit; text-underline-offset: 2px; }
+.hs details { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs details summary { cursor: pointer; color: var(--color-fg); }
+.hs dl { display: grid; gap: var(--cds-gap-xs); margin: var(--cds-gap-sm) 0 0; }
+.hs dt { color: var(--color-fg); font-weight: 600; }
+.hs dd { margin: 0 0 var(--cds-gap-xs); max-width: 80ch; }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+@media (max-width: 560px) { .hs-hide-narrow { display: none; } .hs-bar { grid-template-columns: minmax(6rem, 8rem) minmax(0, 1fr) 2rem; } }
+
+:root {
+  --font-anthropic-sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-anthropic-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --color-bg: #f7f8fa; --color-panel: #ffffff; --color-fg: #18202c; --color-fg-muted: #586374;
+  --color-border-line: #dde2ea; --color-ok: #1f7a4d; --color-warn: #8a5a12; --color-bad: #b3261e;
+  --cds-chart-grid: #e8ecf1; --cds-chart-axis: #b9c1cc; --cds-chart-muted: #c3cad4;
+  --cds-surface-popover: #ffffff; --cds-border: #d3d9e2; --cds-text-secondary: #586374;
+  --cds-shadow-popover: 0 4px 16px rgba(20, 30, 50, .14);
+  --cds-font-size-caption: .85rem; --cds-font-size-body: 1rem; --cds-font-size-heading: 1.12rem; --cds-font-size-title: 2rem;
+  --cds-font-weight-medium: 600;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 16px; --cds-gap-lg: 24px; --cds-gap-xl: 32px;
+  --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 12px; --cds-pad-lg: 16px;
+  --cds-radius: 6px; --cds-dur-slow: .3s;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #11161d; --color-panel: #19202a; --color-fg: #e4e9f0; --color-fg-muted: #9aa6b6;
+    --color-border-line: #2b3441; --color-ok: #5fc08e; --color-warn: #e3b36a; --color-bad: #f08a80;
+    --cds-chart-grid: #232b36; --cds-chart-axis: #4a5565; --cds-chart-muted: #3d4756;
+    --cds-surface-popover: #1f2733; --cds-border: #364152; --cds-text-secondary: #9aa6b6;
+    --cds-shadow-popover: 0 4px 16px rgba(0, 0, 0, .5); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-bg: #11161d; --color-panel: #19202a; --color-fg: #e4e9f0; --color-fg-muted: #9aa6b6;
+  --color-border-line: #2b3441; --color-ok: #5fc08e; --color-warn: #e3b36a; --color-bad: #f08a80;
+  --cds-chart-grid: #232b36; --cds-chart-axis: #4a5565; --cds-chart-muted: #3d4756;
+  --cds-surface-popover: #1f2733; --cds-border: #364152; --cds-text-secondary: #9aa6b6;
+  --cds-shadow-popover: 0 4px 16px rgba(0, 0, 0, .5); color-scheme: dark;
+}
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); line-height: 1.5; }
+.site { padding-block: 32px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.skip { position: absolute; left: -999px; } .skip:focus { left: 16px; top: 8px; background: var(--color-panel); padding: 8px; z-index: 5; }
+.hs-help { display: grid; gap: var(--cds-gap-sm); }
+.hs-help ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 6px; font-size: var(--cds-font-size-caption); }
+.hs-foot { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-lg); }
+.hs-form { display: grid; gap: var(--cds-gap-md); }
+.hs-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: var(--cds-gap-md); }
+.hs-field { display: grid; gap: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); min-width: 0; }
+.hs-field.wide { grid-column: 1 / -1; }
+.hs-field span { color: var(--color-fg); font-weight: 600; }
+.hs-field small { color: var(--color-fg-muted); font-weight: 400; }
+.hs-field input, .hs-field select, .hs-field textarea { font: inherit; font-size: var(--cds-font-size-body); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); width: 100%; box-sizing: border-box; }
+.hs-field textarea { min-height: 5rem; resize: vertical; }
+.hs-btn { font: inherit; font-weight: 600; padding: var(--cds-pad-sm) var(--cds-pad-lg); border: 0; border-radius: var(--cds-radius); background: var(--color-fg); color: var(--color-bg); cursor: pointer; justify-self: start; text-decoration: none; display: inline-block; }
+.hs a.hs-btn { color: var(--color-bg); text-decoration: none; }
+.hs-btn[disabled] { opacity: .6; cursor: wait; }
+.hs-cams { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--cds-gap-md); }
+.hs-cam { margin: 0; display: grid; gap: var(--cds-gap-xs); min-width: 0; }
+.hs-cam a { display: block; aspect-ratio: 4 / 3; background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); overflow: hidden; }
+.hs-cam img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hs-cam figcaption { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-cam figcaption b { color: var(--color-fg); font-weight: 600; }
+.hs-camtabs { flex-wrap: wrap; }
+.hs-data ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 6px; font-size: var(--cds-font-size-caption); max-width: 80ch; }
+.hs-active { border: 2px solid var(--color-bad); border-radius: var(--cds-radius); background: var(--color-panel); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); }
+.hs-active[hidden] { display: none; }
+.hs-active h2 { margin: 0; font-size: var(--cds-font-size-heading); color: var(--color-bad); }
+.hs-active ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 4px; }
+.hs-active .hs-cams { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr)); gap: var(--cds-gap-sm); }
+.hs-warn { margin: 0; font-size: var(--cds-font-size-caption); border-left: 3px solid var(--color-warn); padding-left: var(--cds-pad-sm); max-width: 80ch; }
+.hs-status { margin: 0; font-size: var(--cds-font-size-caption); min-height: 1.4em; }
+.hs-status.ok { color: var(--color-ok); } .hs-status.bad { color: var(--color-bad); }
+.hs-hp { position: absolute; left: -9999px; }
+.hs-steps { margin: 0; padding-left: 1.2rem; display: grid; gap: 6px; font-size: var(--cds-font-size-caption); max-width: 80ch; }
+.hs-hint { margin: calc(-1 * var(--cds-gap-md)) 0 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-cardhead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--cds-gap-sm); }
+.hs-dive { font: inherit; font-size: var(--cds-font-size-caption); background: none; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 2px var(--cds-pad-sm); color: var(--color-fg); cursor: pointer; white-space: nowrap; }
+.hs-click { cursor: pointer; transition: border-color .15s; }
+.hs-click:hover { border-color: var(--color-fg-muted); }
+.hs-pick { cursor: pointer; border-radius: 3px; }
+.hs-pick:hover { background: var(--cds-chart-grid); }
+.hs-rank tbody tr { cursor: pointer; }
+.hs-rank tbody tr:hover td { background: var(--cds-chart-grid); }
+.hs-dlg { width: min(64rem, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid var(--color-border-line); border-radius: 10px; background: var(--color-bg); color: var(--color-fg); overflow: auto; box-sizing: border-box; }
+.hs-dlg::backdrop { background: rgba(10, 15, 25, .55); }
+.hs-dlg-in { padding: 0 var(--cds-pad-lg) var(--cds-pad-lg); display: grid; gap: var(--cds-gap-md); }
+.hs-dlg-head { display: flex; gap: var(--cds-gap-sm); align-items: center; position: sticky; top: 0; background: var(--color-bg); padding-block: var(--cds-pad-md) var(--cds-pad-xs); z-index: 3; }
+.hs-dlg-title { margin: 0; flex: 1; min-width: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 1.5rem; line-height: 1.25; }
+.hs-dlg-btn { font: inherit; font-size: var(--cds-font-size-caption); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); color: var(--color-fg); cursor: pointer; white-space: nowrap; }
+.hs-dlg-sub { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-dlg-body { display: grid; gap: var(--cds-gap-md); }
+.hs-dsec { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); min-width: 0; }
+.hs-dsec h3 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: 600; }
+.hs-dsec .note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-heat td.c { text-align: center; min-width: 2.2rem; border-radius: 3px; cursor: pointer; }
+.hs-heat td.c.z { color: var(--color-fg-muted); cursor: default; }
+.hs-heat th[scope="row"] { white-space: nowrap; color: var(--color-fg); }
+.hs-heat td.n { text-align: right; font-weight: 600; }
+.hs-pats { list-style: none; margin: 0; padding: 0; display: grid; }
+.hs-pats > li.note { padding: var(--cds-pad-sm) 0; }
+.hs-pat { width: 100%; display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) auto; gap: var(--cds-gap-xs) var(--cds-gap-md); align-items: start; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-top: 1px solid var(--color-border-line); padding: var(--cds-pad-sm) var(--cds-pad-xs); cursor: pointer; }
+.hs-pats li:first-child .hs-pat { border-top: 0; }
+.hs-pat:hover { background: var(--cds-chart-grid); }
+.hs-pat b { display: block; font-weight: 600; }
+.hs-pat .d { display: block; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-pat .go { color: var(--color-fg-muted); }
+.hs-chip { justify-self: start; font-size: .75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; margin-top: 2px; }
+.hs-chip.strong { color: var(--color-ok); } .hs-chip.some { color: var(--color-warn); } .hs-chip.info, .hs-chip.weak { color: var(--color-fg-muted); }
+@media (max-width: 560px) { .hs-pat { grid-template-columns: minmax(0, 1fr) auto; } .hs-pat .hs-chip { grid-column: 1 / -1; } }
+.hs-outlook { display: grid; gap: var(--cds-gap-md); }
+.hs-big { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--cds-gap-xs) var(--cds-gap-md); }
+.hs-big .v { font-family: var(--font-anthropic-serif); font-size: 2.4rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hs-big .l { font-size: var(--cds-font-size-body); max-width: 40ch; }
+.hs-sub { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); max-width: 80ch; }
+.hs-outlook h3 { margin: 0; font-size: var(--cds-font-size-body); font-weight: 600; }
+.hs-ok { color: var(--color-ok); font-weight: 600; } .hs-no { color: var(--color-bad); font-weight: 600; }
+.hs-dlg .hs-chart { min-height: 0; }
+.hs-dlg .hs-tiles { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: var(--cds-gap-sm); }
+.hs-dlg .hs-tile { padding: var(--cds-pad-md); }
+.hs-dlg .hs-tile .v { font-size: 1.5rem; }
+.hs-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs) var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hs-legend i { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, td[role="button"]:focus-visible, .hs-tile:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+
+<a class="skip" href="#towns">Skip to the town ranking</a>
+<main class="site"><div class="hs">
+  <header class="hs-head" id="top">
+    <h1 class="hs-title">Washington ICE hotspots</h1>
+    <div class="hs-gs" role="search">
+      <input id="hs-gs" type="search" autocomplete="off" placeholder="Search Washington: a city, a place, a topic" aria-label="Search this site" aria-controls="hs-gs-list" aria-expanded="false" aria-autocomplete="list">
+      <ul class="hs-gs-list" id="hs-gs-list" role="listbox" hidden></ul>
+    </div>
+    <p class="hs-take"><b data-draw="top1" data-source="breakdowns" data-field="key">—</b> has the most past ICE reports, weighted toward recent ones, followed by <b data-draw="top2" data-source="breakdowns" data-field="key">—</b> and <b data-draw="top3" data-source="breakdowns" data-field="key">—</b>. Data checked <b data-draw="asof" data-source="incidents" data-field="as_of">—</b>.</p>
+    <p class="hs-clock" id="clock">Now <span data-draw="clock">—</span> Pacific · Last checked <span data-draw="checked" data-source="incidents">—</span> · Next check <span data-draw="next">—</span></p>
+    <p class="hs-caveat"><b>Read with care.</b> This page counts community reports from The ICE List and news reports from across Washington State. Most are single alerts the site marks as not independently confirmed. Places with more past reports are where activity has been seen before. That is a rough guide to where it may happen again, not a prediction of any specific operation.</p>
+  </header>
+
+  <section class="hs-active" id="active" hidden aria-live="polite">
+    <h2>Active sighting</h2>
+    <ul id="hs-active-list"></ul>
+    <p class="note" id="hs-active-cam-note"></p>
+    <div class="hs-cams" id="hs-active-cams"></div>
+    <p class="note">Road cameras show traffic only and cannot confirm ICE activity. They are here so you can see conditions near the reported area. <a href="#cameras">More cameras</a></p>
+  </section>
+
+  <div class="hs-controls" id="filters">
+    <span class="hs-label">Area</span>
+    <div class="hs-seg many" role="group" aria-label="Area">
+      <button type="button" class="hs-area" data-v="all" aria-pressed="true">All of Washington</button>
+      <button type="button" class="hs-area" data-v="king" aria-pressed="false">Seattle and King County</button>
+      <button type="button" class="hs-area" data-v="south" aria-pressed="false">Tacoma and South Sound</button>
+      <button type="button" class="hs-area" data-v="north" aria-pressed="false">North Sound</button>
+      <button type="button" class="hs-area" data-v="southwest" aria-pressed="false">Southwest</button>
+      <button type="button" class="hs-area" data-v="central" aria-pressed="false">Central and Tri-Cities</button>
+      <button type="button" class="hs-area" data-v="east" aria-pressed="false">Spokane and Eastern</button>
+    </div>
+    <span aria-hidden="true" style="flex-basis:100%;height:0"></span>
+    <span class="hs-label">Reports</span>
+    <div class="hs-seg" role="group" aria-label="Reports">
+      <button type="button" class="hs-ev" data-v="all" aria-pressed="true">All reports</button>
+      <button type="button" class="hs-ev" data-v="evidence" aria-pressed="false">Only with evidence</button>
+    </div>
+  </div>
+
+  <p class="hs-hint">Tap any section, bar, column or town for a closer look.</p>
+
+  <section class="hs-tiles" id="totals">
+    <div class="hs-tile"><span class="v" data-draw="t-n" data-source="breakdowns" data-field="n">—</span><span class="l">Reports, all time</span></div>
+    <div class="hs-tile"><span class="v" data-draw="t-recent" data-source="breakdowns" data-field="recent">—</span><span class="l">Reports in the last 90 days</span></div>
+    <div class="hs-tile"><span class="v" data-draw="t-towns" data-source="breakdowns" data-field="towns">—</span><span class="l">Towns with at least one report</span></div>
+    <div class="hs-tile"><span class="v" data-draw="t-last" data-source="breakdowns" data-field="last">—</span><span class="l">Most recent report, <span data-draw="t-ago">—</span></span></div>
+  </section>
+
+  <section class="hs-card" id="outlook">
+    <h2>Outlook: where past reports point next</h2>
+    <p class="note">A forecast built only from past reports. It knows nothing about planned operations. Each part shows only when the past data supports it, and it says how often this method would have been right before.</p>
+    <div class="hs-outlook" data-draw="outlook" data-source="incidents"></div>
+  </section>
+
+  <section class="hs-card" id="patterns">
+    <h2>Patterns</h2>
+    <p class="note">Checked automatically each time the data updates. A pattern shows only when the numbers support it. Small numbers can still mislead, so each one says how many reports it rests on.</p>
+    <ul class="hs-pats" data-draw="patterns" data-source="incidents"></ul>
+  </section>
+
+  <section class="hs-card" id="towns">
+    <h2>Where activity has been reported most</h2>
+    <p class="note">Ranked by a score that counts every report and gives recent ones more weight. A report loses half its weight every 90 days.</p>
+    <div class="hs-wrap">
+      <table class="hs-rank" data-source="breakdowns" data-row-key="k">
+        <thead><tr><th data-field="key">Town</th><th data-field="score">Score</th><th class="n" data-field="n">Reports</th><th class="n" data-field="recent">Last 90 days</th><th data-field="last">Most recent</th></tr></thead>
+        <tbody data-draw="towns"></tbody>
+      </table>
+    </div>
+    <p class="note">Major cities in this area with no reports on The ICE List: <span data-draw="zero" data-source="breakdowns">—</span>.</p>
+  </section>
+
+  <div class="hs-grid">
+    <section class="hs-card" id="places">
+      <h2>Types of places</h2>
+      <p class="note">Where the report says it happened. Most community alerts give no place.</p>
+      <div class="hs-bars" data-draw="places" data-source="breakdowns"></div>
+    </section>
+    <section class="hs-card" id="kinds">
+      <h2>How each report is backed</h2>
+      <p class="note">Community alerts and index listings are unconfirmed. The others have video, a court record, eyewitness detail or a news report.</p>
+      <div class="hs-bars" data-draw="kinds" data-source="breakdowns"></div>
+    </section>
+  </div>
+
+  <div class="hs-grid">
+    <section class="hs-card" id="weekdays">
+      <h2>Day of the week</h2>
+      <p class="note">Many community alerts are dated by the day they were filed, so these days are approximate.</p>
+      <div class="hs-chart" data-draw="weekday" data-source="breakdowns"></div>
+    </section>
+    <section class="hs-card" id="hours">
+      <h2>Time of day</h2>
+      <p class="note">Only reports that give a time are shown. Each dot is one report.</p>
+      <div class="hs-chart" data-draw="hours" data-source="incidents"></div>
+    </section>
+  </div>
+
+  <section class="hs-card" id="months">
+    <h2>Reports by month</h2>
+    <p class="note">More reports in recent months raise a town's score.</p>
+    <div class="hs-chart" data-draw="months" data-source="breakdowns"></div>
+  </section>
+
+  <section class="hs-card" id="list">
+    <h2>Every report</h2>
+    <input class="hs-search" id="hs-search" type="search" placeholder="Search town, place or type" aria-label="Search reports">
+    <div class="hs-wrap hs-list">
+      <table data-source="incidents" data-row-key="id">
+        <thead><tr>
+          <th data-field="date"><button type="button" class="hs-sort" data-k="date">Date</button></th>
+          <th data-field="town"><button type="button" class="hs-sort" data-k="town">Town</button></th>
+          <th data-field="title">What was reported</th>
+          <th data-field="place" class="hs-hide-narrow">Place</th>
+          <th data-field="place_type" class="hs-hide-narrow"><button type="button" class="hs-sort" data-k="place_type">Place type</button></th>
+          <th data-field="time" class="hs-hide-narrow">Time</th>
+          <th data-field="source_kind"><button type="button" class="hs-sort" data-k="source_kind">Backed by</button></th>
+        </tr></thead>
+        <tbody data-draw="list"></tbody>
+      </table>
+    </div>
+  </section>
+
+
+  <section class="hs-card" id="cameras">
+    <h2>Live WSDOT road cameras near reported areas</h2>
+    <p class="note">Public traffic cameras from the Washington State Department of Transportation, on highways through the cities with the most reports, from Bellingham to Vancouver and Spokane. Images refresh about every 2 minutes. Tap an image to open it on WSDOT's map.</p>
+    <p class="hs-warn">These cameras show traffic only. They are low resolution, and ICE often uses unmarked cars, so a camera image cannot confirm or rule out ICE activity.</p>
+    <div class="hs-seg many hs-camtabs" role="group" aria-label="Choose an area">
+      <button type="button" class="hs-camtab" data-v="Seattle" aria-pressed="true">Seattle</button>
+      <button type="button" class="hs-camtab" data-v="South King" aria-pressed="false">Kent, Auburn, Federal Way</button>
+      <button type="button" class="hs-camtab" data-v="Tacoma" aria-pressed="false">Tacoma and Fife</button>
+      <button type="button" class="hs-camtab" data-v="Olympia" aria-pressed="false">Olympia and Lacey</button>
+      <button type="button" class="hs-camtab" data-v="Everett" aria-pressed="false">Everett and Lynnwood</button>
+      <button type="button" class="hs-camtab" data-v="Bellingham" aria-pressed="false">Bellingham and Skagit</button>
+      <button type="button" class="hs-camtab" data-v="Vancouver" aria-pressed="false">Vancouver</button>
+      <button type="button" class="hs-camtab" data-v="Central" aria-pressed="false">Yakima, Wenatchee, Tri-Cities</button>
+      <button type="button" class="hs-camtab" data-v="Spokane" aria-pressed="false">Spokane</button>
+    </div>
+    <div class="hs-cams" id="hs-cams"></div>
+    <p class="note" id="hs-cams-time"></p>
+    <a class="hs-btn" href="https://wsdot.wa.gov/travel/real-time/cameras" target="_blank" rel="noopener">See all WSDOT cameras</a>
+  </section>
+
+  <section class="hs-card" id="report">
+    <h2>Report a sighting</h2>
+    <p class="note">Reports are reviewed before anything is posted. A sighting goes on the site only after a second, independent source confirms it, such as a news story or another report of the same event.</p>
+    <p class="hs-warn">Do not include anyone's name, photo, license plate or social media handle. Describe the place and what happened.</p>
+    <form class="hs-form" id="hs-report-form" novalidate>
+      <div class="hs-fields">
+        <label class="hs-field"><span>Town</span>
+          <select name="town" required>
+            <option value="">Choose a town</option>
+            <optgroup label="Seattle and King County"><option>Algona</option><option>Auburn</option><option>Bellevue</option><option>Black Diamond</option><option>Bothell</option><option>Burien</option><option>Covington</option><option>Des Moines</option><option>Enumclaw</option><option>Federal Way</option><option>Issaquah</option><option>Kenmore</option><option>Kent</option><option>Kirkland</option><option>Lake Forest Park</option><option>Maple Valley</option><option>Mercer Island</option><option>Newcastle</option><option>Normandy Park</option><option>North Bend</option><option>Pacific</option><option>Redmond</option><option>Renton</option><option>Sammamish</option><option>SeaTac</option><option>Seattle</option><option>Shoreline</option><option>Snoqualmie</option><option>Tukwila</option><option>Vashon</option><option>Woodinville</option></optgroup>
+            <optgroup label="Tacoma and South Sound"><option>Bainbridge Island</option><option>Bonney Lake</option><option>Bremerton</option><option>DuPont</option><option>Edgewood</option><option>Fife</option><option>Gig Harbor</option><option>Hoodsport</option><option>Lacey</option><option>Lakewood</option><option>Milton</option><option>Olympia</option><option>Orting</option><option>Parkland</option><option>Port Angeles</option><option>Port Orchard</option><option>Port Townsend</option><option>Poulsbo</option><option>Puyallup</option><option>Sequim</option><option>Shelton</option><option>Silverdale</option><option>Spanaway</option><option>Steilacoom</option><option>Sumner</option><option>Tacoma</option><option>Tumwater</option><option>University Place</option><option>Yelm</option></optgroup>
+            <optgroup label="North Sound"><option>Anacortes</option><option>Arlington</option><option>Bellingham</option><option>Blaine</option><option>Bow</option><option>Burlington</option><option>Coupeville</option><option>Edmonds</option><option>Everett</option><option>Everson</option><option>Ferndale</option><option>Friday Harbor</option><option>Granite Falls</option><option>Lake Stevens</option><option>Langley</option><option>Laurel</option><option>Lynden</option><option>Lynnwood</option><option>Marysville</option><option>Mill Creek</option><option>Monroe</option><option>Mount Vernon</option><option>Mountlake Terrace</option><option>Mukilteo</option><option>Oak Harbor</option><option>Sedro-Woolley</option><option>Snohomish</option><option>Stanwood</option><option>Sultan</option><option>Sumas</option></optgroup>
+            <optgroup label="Southwest"><option>Aberdeen</option><option>Battle Ground</option><option>Camas</option><option>Castle Rock</option><option>Centralia</option><option>Chehalis</option><option>Hoquiam</option><option>Kelso</option><option>La Center</option><option>Long Beach</option><option>Longview</option><option>Ocean Shores</option><option>Raymond</option><option>Ridgefield</option><option>Stevenson</option><option>Vancouver</option><option>Washougal</option><option>White Salmon</option><option>Woodland</option></optgroup>
+            <optgroup label="Central and Tri-Cities"><option>Benton City</option><option>Brewster</option><option>Chelan</option><option>Cle Elum</option><option>East Wenatchee</option><option>Ellensburg</option><option>Ephrata</option><option>Goldendale</option><option>Grandview</option><option>Granger</option><option>Kennewick</option><option>Leavenworth</option><option>Mattawa</option><option>Moses Lake</option><option>Okanogan</option><option>Omak</option><option>Oroville</option><option>Othello</option><option>Pasco</option><option>Pateros</option><option>Prosser</option><option>Quincy</option><option>Richland</option><option>Royal City</option><option>Selah</option><option>Sunnyside</option><option>Tonasket</option><option>Toppenish</option><option>Union Gap</option><option>Wapato</option><option>Wenatchee</option><option>West Richland</option><option>Yakima</option><option>Zillah</option></optgroup>
+            <optgroup label="Spokane and Eastern"><option>Airway Heights</option><option>Cheney</option><option>Chewelah</option><option>Clarkston</option><option>Colfax</option><option>College Place</option><option>Colville</option><option>Dayton</option><option>Deer Park</option><option>Liberty Lake</option><option>Medical Lake</option><option>Newport</option><option>Pullman</option><option>Ritzville</option><option>Spokane</option><option>Spokane Valley</option><option>Walla Walla</option></optgroup>
+            <option>Other</option>
+          </select>
+        </label>
+        <label class="hs-field"><span>Date</span><input type="date" name="date" required></label>
+        <label class="hs-field"><span>Time <small>(if known)</small></span><input type="time" name="time"></label>
+        <label class="hs-field"><span>Place type</span>
+          <select name="place_type">
+            <option>Not sure</option><option>Street or vehicle stop</option><option>Workplace</option><option>Restaurant or store</option><option>Government building</option><option>Home or apartment</option><option>ICE check-in</option><option>School or church</option><option>Other</option>
+          </select>
+        </label>
+        <label class="hs-field wide"><span>Where <small>(street, intersection or business)</small></span><input type="text" name="place" maxlength="200" required></label>
+        <label class="hs-field wide"><span>What happened</span><textarea name="what" maxlength="1500" required></textarea></label>
+        <label class="hs-field wide"><span>Link <small>(news story, post or video, if any)</small></span><input type="url" name="link" maxlength="500" placeholder="https://"></label>
+        <label class="hs-field"><span>How do you know?</span>
+          <select name="how">
+            <option>I saw it myself</option><option>Someone I know saw it</option><option>I saw it online</option><option>News report</option>
+          </select>
+        </label>
+      </div>
+      <label class="hs-hp" aria-hidden="true">Leave this empty <input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></label>
+      <button class="hs-btn" type="submit">Send report</button>
+      <p class="hs-status" id="hs-report-status" role="status"></p>
+    </form>
+  </section>
+
+  <section class="hs-card" id="locate">
+    <h2>Find someone who may be detained</h2>
+    <p class="note">ICE's Online Detainee Locator is the official search. It only shows people currently held by ICE, and it can take a day or two after an arrest for someone to appear.</p>
+    <ol class="hs-steps">
+      <li>Search by <b>A-Number</b> (the 9-digit immigration case number) and country of birth. This is the most reliable way.</li>
+      <li>Or search by <b>first name, last name and country of birth</b>. Spell the name the way it appears on official papers. Try other spellings and both last names if the person uses two.</li>
+      <li>If nothing comes up, call the <a href="https://www.ice.gov/field-office/seattle-field-office" target="_blank" rel="noopener">ICE Seattle Field Office</a> (phone number on that page) or contact a legal-help group below. Most people arrested in this area are taken to the Northwest ICE Processing Center in Tacoma.</li>
+    </ol>
+    <a class="hs-btn" href="https://locator.ice.gov/odls/" target="_blank" rel="noopener">Open the ICE Detainee Locator</a>
+    <p class="note">This site does not store or search for anyone's name. The search happens on ICE's site.</p>
+  </section>
+
+  <section class="hs-card hs-data" id="plates">
+    <h2>Your car, license plate cameras and ICE</h2>
+    <p class="note">What state law and state records say about plate and driver data reaching immigration agents.</p>
+    <ul>
+      <li><b>License plate cameras.</b> Senate Bill 6002, signed March 30, 2026 and in effect right away, bars police plate readers (often Flock cameras) from being used for immigration enforcement. They also cannot collect data near immigration or protected health care facilities, schools, courts, food banks or places of worship. Data must be deleted after 21 days unless it is evidence, and can only be shared in court proceedings. <a href="https://www.opb.org/article/2026/03/31/washington-adds-safeguards-flock-cameras/" target="_blank" rel="noopener">OPB</a></li>
+      <li><b>Driver and plate records.</b> The governor's office says the state blocked 108,170 attempts by federal immigration agencies to search Washington driver and plate records from November 2025 to July 2026. ICE and Homeland Security Investigations lost access, and Customs and Border Protection access was suspended. <a href="https://www.opb.org/article/2026/07/27/washington-has-blocked-over-100000-federal-attempts-to-access-license-plate-data/" target="_blank" rel="noopener">OPB</a></li>
+      <li><b>Gaps remain.</b> UW Center for Human Rights researchers report that federal agents have kept getting driver data through state systems, sometimes by searching again under a different agency code. <a href="https://jsis.washington.edu/humanrights/2026/07/27/dol-data-sharing-continues-july-2026-update/" target="_blank" rel="noopener">UW Center for Human Rights</a></li>
+      <li><b>WSDOT traffic cameras</b> are a separate system. They stream live pictures for traffic and are not plate readers.</li>
+    </ul>
+  </section>
+
+  <section class="hs-card hs-help" id="help">
+    <h2>If you or someone you know needs help</h2>
+    <ul>
+      <li><a href="https://locator.ice.gov/" target="_blank" rel="noopener">ICE Online Detainee Locator</a>: find out whether a person is held and where.</li>
+      <li><a href="https://www.immigrationadvocates.org/nonprofit/legaldirectory/" target="_blank" rel="noopener">National Immigration Legal Services Directory</a>: free or low-cost legal help by location.</li>
+      <li><a href="https://www.wehaverights.us/" target="_blank" rel="noopener">We Have Rights</a>: know-your-rights videos and guides in several languages.</li>
+      <li><a href="https://www.nilc.org/resources/know-your-rights-card/" target="_blank" rel="noopener">NILC know-your-rights card</a>: a printable card.</li>
+      <li><a href="https://www.oig.dhs.gov/hotline" target="_blank" rel="noopener">DHS Inspector General hotline</a>: report misconduct by an ICE officer. You do not need the officer's name.</li>
+      <li><a href="https://www.dhs.gov/file-civil-rights-complaint" target="_blank" rel="noopener">DHS Office for Civil Rights and Civil Liberties</a>: file a civil rights complaint about how someone was treated.</li>
+    </ul>
+  </section>
+
+  <details id="notes">
+    <summary>How this page works and what it leaves out</summary>
+    <dl>
+      <dt>Source</dt>
+      <dd>The ICE List (theicelist.org) incident pages and community alerts for all of Washington, plus news reports found by web search. The ICE List gathers StopICE community alerts, eyewitness reports, court records and news. Legal-help links are on iceinmyarea.org/resources.</dd>
+      <dt>Score</dt>
+      <dd>Each report counts 1 on the day it happened and half that 90 days later, a quarter after 180 days, and so on. A town's score is the sum. It favors places with repeated and recent reports.</dd>
+      <dt>Only with evidence</dt>
+      <dd>Keeps reports backed by video, a court record, eyewitness detail matched to ICE's FOIA arrest log, or a news report. Drops unconfirmed community alerts and index listings.</dd>
+      <dt>Areas</dt>
+      <dd>Each town belongs to one of six regions: Seattle and King County; Tacoma and South Sound (Pierce, Thurston, Kitsap, Mason and the Olympic Peninsula); North Sound (Snohomish, Skagit, Whatcom, Island and San Juan); Southwest (Clark, Cowlitz, Lewis, the coast and the Gorge); Central and Tri-Cities (Yakima, Chelan, Grant, Kittitas, Okanogan, Benton and Franklin); and Spokane and Eastern. Community alerts that name only "Washington" with no town are left out. Bigger cities have more people and more reports, so compare towns with care.</dd>
+      <dt>Road cameras</dt>
+      <dd>Live images come straight from WSDOT's public camera feed (images.wsdot.wa.gov). This site does not save them. Cameras sometimes go offline for maintenance. When a report dated today or yesterday is added, an Active sighting box appears at the top with the nearest cameras. Nothing on this site scans the camera images for ICE; a sighting only appears from a report.</dd>
+      <dt>Left out</dt>
+      <dd>Reports that never reached The ICE List. Arrest totals in ICE's own data, which count people rather than places. Anything about future operations, which no public source here describes.</dd>
+      <dt>Updates</dt>
+      <dd>The ICE List is checked every hour, day and night, along with a news search, and new reports are added. The clock and "days ago" figures use the current time. Scores and the 90-day window count back from the most recent check.</dd>
+    </dl>
+  </details>
+</div>
+</main>
+<footer class="site hs-foot" style="padding-block:0 32px"><div class="hs" style="gap:4px">Washington ICE Hotspots. Built from community reports on The ICE List and Washington news. Most reports are unconfirmed. This site does not predict ICE operations. Updated every hour.</div></footer>
+<script>
+window.dash = (() => {
+  const st = { data: {}, params: { area: 'all', evidence: 'all' }, draws: new Map(), calcs: new Map(), listeners: [] };
+  const colors = ['#2f6fb0', '#c0612f', '#2f8a5a', '#8a56b5', '#b0882f', '#2f9aa0', '#b04f7a', '#6b7a2f'];
+  const data = (id) => {
+    const c = st.calcs.get(id);
+    if (c) {
+      const ins = c.inputs.map(data);
+      if (ins.some((x) => x.status !== 'ok')) return { status: 'loading', data: [] };
+      if (!c.cache) c.cache = c.fn(...ins.map((x) => x.data));
+      return { status: 'ok', data: c.cache };
+    }
+    return st.data[id] || { status: 'loading', data: [] };
+  };
+  const runOne = (el, spec) => {
+    try {
+      if (typeof spec === 'function') spec(el);
+      else { if (!el.__dashMade) el.__dashMade = { v: spec.mount(el) }; spec.update(el, el.__dashMade.v); }
+    } catch (e) { console.error(e); }
+  };
+  const runName = (name) => { const spec = st.draws.get(name); if (spec) document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => runOne(el, spec)); };
+  const runAll = () => { st.listeners.forEach((f) => { try { f(); } catch (e) { console.error(e); } }); st.draws.forEach((_, n) => runName(n)); };
+  let t; const later = () => { clearTimeout(t); t = setTimeout(runAll, 120); };
+  window.addEventListener('resize', later);
+  const load = () => fetch('data.json', { cache: 'no-store' }).then((r) => r.json()).then((rows) => {
+    st.data.incidents = { status: 'ok', data: rows };
+    st.calcs.forEach((c) => { c.cache = null; });
+    runAll();
+  }).catch(() => { st.data.incidents = { status: 'error', data: [] }; runAll(); });
+  document.addEventListener('DOMContentLoaded', () => { runAll(); load(); setInterval(load, 10 * 60 * 1000); });
+  return {
+    colors,
+    data,
+    calc: (id, spec) => { st.calcs.set(id, { inputs: spec.inputs, fn: spec.fn, cache: null }); },
+    loader: () => {},
+    onData: (fn) => { st.listeners.push(fn); },
+    draw: (name, spec) => { if (spec === undefined) runName(name); else st.draws.set(name, spec); },
+    params: () => Object.assign({}, st.params),
+    setParams: (o) => { Object.assign(st.params, o); runAll(); },
+    resetParams: () => { st.params = { area: 'all', evidence: 'all' }; runAll(); },
+    setLink: () => {},
+    refresh: load,
+  };
+})();
+</script>
+<script>
+window.hsRegions = {"king": {"name": "Seattle and King County", "cities": ["Seattle", "Bellevue", "Kent", "Renton", "Federal Way", "Auburn", "Kirkland", "Redmond", "Shoreline", "Burien", "Sammamish", "Issaquah", "Tukwila", "SeaTac", "Des Moines", "Bothell", "Kenmore", "Mercer Island", "Covington", "Maple Valley", "Enumclaw", "Black Diamond", "Algona", "Pacific", "Woodinville", "Snoqualmie", "North Bend", "Newcastle", "Lake Forest Park", "Normandy Park", "Vashon"]}, "south": {"name": "Tacoma and South Sound", "cities": ["Tacoma", "Lakewood", "Puyallup", "University Place", "Fife", "Milton", "Edgewood", "Sumner", "Bonney Lake", "Gig Harbor", "Spanaway", "Parkland", "DuPont", "Steilacoom", "Orting", "Olympia", "Lacey", "Tumwater", "Yelm", "Bremerton", "Port Orchard", "Silverdale", "Poulsbo", "Bainbridge Island", "Shelton", "Hoodsport", "Port Angeles", "Sequim", "Port Townsend"]}, "north": {"name": "North Sound", "cities": ["Everett", "Lynnwood", "Marysville", "Edmonds", "Mountlake Terrace", "Mill Creek", "Mukilteo", "Lake Stevens", "Snohomish", "Monroe", "Arlington", "Granite Falls", "Stanwood", "Sultan", "Bellingham", "Ferndale", "Lynden", "Everson", "Blaine", "Sumas", "Laurel", "Mount Vernon", "Burlington", "Sedro-Woolley", "Anacortes", "Bow", "Oak Harbor", "Coupeville", "Langley", "Friday Harbor"]}, "southwest": {"name": "Southwest", "cities": ["Vancouver", "Camas", "Washougal", "Battle Ground", "Ridgefield", "La Center", "Woodland", "Kelso", "Longview", "Castle Rock", "Centralia", "Chehalis", "Aberdeen", "Hoquiam", "Ocean Shores", "Long Beach", "Raymond", "Stevenson", "White Salmon"]}, "central": {"name": "Central and Tri-Cities", "cities": ["Yakima", "Union Gap", "Selah", "Wapato", "Toppenish", "Sunnyside", "Grandview", "Prosser", "Granger", "Zillah", "Ellensburg", "Cle Elum", "Wenatchee", "East Wenatchee", "Chelan", "Leavenworth", "Quincy", "Moses Lake", "Ephrata", "Othello", "Mattawa", "Royal City", "Pasco", "Kennewick", "Richland", "West Richland", "Benton City", "Omak", "Okanogan", "Brewster", "Pateros", "Tonasket", "Oroville", "Goldendale"]}, "east": {"name": "Spokane and Eastern", "cities": ["Spokane", "Spokane Valley", "Liberty Lake", "Cheney", "Airway Heights", "Medical Lake", "Deer Park", "Pullman", "Colfax", "Walla Walla", "College Place", "Dayton", "Clarkston", "Ritzville", "Colville", "Chewelah", "Newport"]}};
+window.hsAreas = ['all'].concat(Object.keys(hsRegions));
+window.hsAreaName = (a) => (a && hsRegions[a] ? hsRegions[a].name : 'All of Washington');
+window.hsIn = (r, a) => !a || a === 'all' || r.area === a;
+window.hsRegionOf = (town) => { for (const k in hsRegions) if (hsRegions[k].cities.includes(town)) return k; return null; };
+dash.calc('breakdowns', {
+  inputs: ['incidents'],
+  title: 'Hotspot counts and scores',
+  description: 'Reports by town, place type, backing, weekday, hour and month for each area and evidence filter, with a score where a report loses half its weight every 90 days.',
+  fn: (incidents) => {
+    const DAY = 864e5, HALF = 90, WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const asOf = incidents.reduce((m, r) => (r.as_of > m ? r.as_of : m), '');
+    const ref = Date.parse(asOf + 'T00:00:00Z');
+    const dated = incidents.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date || ''));
+    const firstMonth = dated.reduce((m, r) => (r.date.slice(0, 7) < m ? r.date.slice(0, 7) : m), asOf.slice(0, 7));
+    const out = [];
+    for (const area of hsAreas) for (const ev of ['all', 'evidence']) {
+      const scope = area + '-' + ev;
+      const g = new Map();
+      const get = (dim, key) => {
+        const k = scope + '|' + dim + '|' + key;
+        if (!g.has(k)) g.set(k, { k, scope, dim, key, n: 0, recent: 0, score: 0, last: '', towns: null });
+        return g.get(k);
+      };
+      WD.forEach((d) => get('weekday', d));
+      for (let m = firstMonth; m <= asOf.slice(0, 7);) {
+        get('month', m);
+        const [y, mo] = m.split('-').map(Number);
+        m = mo === 12 ? (y + 1) + '-01' : y + '-' + String(mo + 1).padStart(2, '0');
+      }
+      const total = get('total', 'all');
+      const rows = dated.filter((r) => hsIn(r, area) && (ev === 'all' || r.evidence));
+      for (const r of rows) {
+        const age = (ref - Date.parse(r.date + 'T00:00:00Z')) / DAY;
+        const add = (x) => { x.n++; if (age <= 90) x.recent++; x.score += Math.pow(0.5, age / HALF); if (r.date > x.last) x.last = r.date; };
+        add(total);
+        add(get('town', r.town));
+        add(get('place', r.place_type || 'Not given'));
+        add(get('kind', r.source_kind));
+        add(get('weekday', WD[new Date(r.date + 'T00:00:00Z').getUTCDay()]));
+        add(get('month', r.date.slice(0, 7)));
+        if (/^\d{2}:\d{2}$/.test(r.time || '')) add(get('hour', r.time.slice(0, 2)));
+      }
+      total.towns = [...g.values()].filter((x) => x.dim === 'town').length;
+      for (const x of g.values()) { x.score = Math.round(x.score * 100) / 100; out.push(x); }
+    }
+    return out;
+  },
+});
+
+window.hsWatch = () => { const a = dash.params().area || 'all'; return a === 'all' ? Object.values(hsRegions).flatMap((r) => r.cities.slice(0, 8)) : hsRegions[a].cities; };
+window.hsScope = () => { const p = dash.params(); return (p.area || 'all') + '-' + (p.evidence || 'all'); };
+window.hsRows = (dim) => { const b = dash.data('breakdowns'); return b.status === 'ok' ? b.data.filter((x) => x.scope === hsScope() && x.dim === dim) : null; };
+window.hsTowns = () => { const t = hsRows('town'); return t ? t.slice().sort((a, b) => b.score - a.score || b.n - a.n || a.key.localeCompare(b.key)) : null; };
+window.hsDate = (s) => (s ? d3.utcFormat('%b %-d, %Y')(new Date(s + 'T00:00:00Z')) : '—');
+window.hsTip = (el) => { let t = el.querySelector('.hs-tip'); if (!t) { t = document.createElement('div'); t.className = 'hs-tip'; t.hidden = true; el.appendChild(t); } return t; };
+window.hsShowTip = (el, tip, event, head, line) => {
+  tip.replaceChildren();
+  const a = document.createElement('div'); a.className = 'd'; a.textContent = head; tip.appendChild(a);
+  const b = document.createElement('div'); b.textContent = line; tip.appendChild(b);
+  tip.hidden = false;
+  const box = el.getBoundingClientRect();
+  const x = event.clientX - box.left, y = event.clientY - box.top;
+  const w = tip.offsetWidth;
+  tip.style.left = Math.max(0, Math.min(box.width - w, x - w / 2)) + 'px';
+  tip.style.top = Math.max(0, y - tip.offsetHeight - 12) + 'px';
+};
+
+// Filter buttons
+document.querySelectorAll('.hs-area').forEach((b) => b.addEventListener('click', () => dash.setParams({ area: b.dataset.v })));
+document.querySelectorAll('.hs-ev').forEach((b) => b.addEventListener('click', () => dash.setParams({ evidence: b.dataset.v })));
+dash.onData(() => {
+  const p = dash.params();
+  document.querySelectorAll('.hs-area').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === (p.area || 'all'))));
+  document.querySelectorAll('.hs-ev').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === (p.evidence || 'all'))));
+});
+
+// Takeaway
+['top1', 'top2', 'top3'].forEach((name, i) => dash.draw(name, (el) => {
+  const t = hsTowns();
+  const row = t && t[i];
+  el.textContent = row ? row.key : '—';
+  if (row) el.setAttribute('data-where', 'k=' + encodeURIComponent(row.k)); else el.removeAttribute('data-where');
+}));
+dash.draw('asof', (el) => {
+  const d = dash.data('incidents');
+  const v = d.status === 'ok' ? d.data.reduce((m, r) => (r.as_of > m ? r.as_of : m), '') : '';
+  el.textContent = v ? hsDate(v) : '—';
+  if (v) el.setAttribute('data-where', 'as_of=' + v); else el.removeAttribute('data-where');
+});
+
+// Live time
+window.hsPT = (d, opts) => new Intl.DateTimeFormat('en-US', Object.assign({ timeZone: 'America/Los_Angeles' }, opts)).format(d);
+window.hsAgo = (ms) => { const m = Math.max(0, Math.round(ms / 6e4)); if (m < 1) return 'just now'; if (m < 60) return m + (m === 1 ? ' minute ago' : ' minutes ago'); const h = Math.round(m / 60); if (h < 48) return h + (h === 1 ? ' hour ago' : ' hours ago'); const d = Math.round(h / 24); return d + ' days ago'; };
+window.hsNextCheck = (now) => {
+  const SLOTS = Array.from({ length: 24 }, (_, i) => i);
+  for (let i = 0; i < 48 * 4; i++) {
+    const t = new Date(Math.ceil(now.getTime() / 9e5) * 9e5 + i * 9e5);
+    const hh = +hsPT(t, { hour: '2-digit', hourCycle: 'h23' }), mm = +hsPT(t, { minute: '2-digit' });
+    if (SLOTS.includes(hh) && mm === 15 && t.getTime() - 12e4 > now.getTime()) return new Date(t.getTime() - 2 * 6e4);
+  }
+  return null;
+};
+const ticking = (name, render) => dash.draw(name, {
+  mount: (el) => { const id = setInterval(() => render(el), 30000); return id; },
+  update: (el) => render(el),
+  unmount: (el, id) => clearInterval(id),
+});
+ticking('clock', (el) => { el.textContent = hsPT(new Date(), { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); });
+ticking('next', (el) => { const n = hsNextCheck(new Date()); el.textContent = n ? hsPT(n, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—'; });
+ticking('checked', (el) => {
+  const d = dash.data('incidents');
+  const v = d.status === 'ok' ? d.data.reduce((m, r) => ((r.checked_at || '') > m ? r.checked_at : m), '') : '';
+  el.textContent = v ? hsAgo(Date.now() - Date.parse(v)) : '—';
+});
+ticking('t-ago', (el) => {
+  const t = hsRows('total');
+  const last = t && t[0] && t[0].last;
+  const today = hsPT(new Date(), { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2');
+  const days = last ? Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(last + 'T00:00:00Z')) / 864e5) : null;
+  el.textContent = days === null ? '—' : days <= 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago';
+});
+
+// Tiles
+const tile = (name, field, fmt) => dash.draw(name, (el) => {
+  const t = hsRows('total');
+  const row = t && t[0];
+  el.textContent = row ? fmt(row[field]) : '—';
+  if (row) el.setAttribute('data-where', 'k=' + encodeURIComponent(row.k)); else el.removeAttribute('data-where');
+});
+tile('t-n', 'n', d3.format(','));
+tile('t-recent', 'recent', d3.format(','));
+tile('t-towns', 'towns', d3.format(','));
+tile('t-last', 'last', hsDate);
+
+// Town ranking
+dash.draw('towns', (tbody) => {
+  const t = hsTowns();
+  tbody.replaceChildren();
+  if (!t) return;
+  const max = d3.max(t, (x) => x.score) || 1;
+  for (const r of t) {
+    const tr = document.createElement('tr');
+    tr.dataset.key = r.k;
+    const c1 = document.createElement('td'); c1.textContent = r.key;
+    const c2 = document.createElement('td');
+    const sb = document.createElement('div'); sb.className = 'hs-scorebar';
+    const bar = document.createElement('span'); bar.className = 'b';
+    bar.style.width = Math.max(2, (r.score / max) * 100) + 'px';
+    bar.style.background = dash.colors[0];
+    const num = document.createElement('span'); num.textContent = d3.format('.2f')(r.score);
+    sb.append(bar, num); c2.appendChild(sb);
+    const c3 = document.createElement('td'); c3.className = 'n'; c3.textContent = d3.format(',')(r.n);
+    const c4 = document.createElement('td'); c4.className = 'n'; c4.textContent = d3.format(',')(r.recent);
+    const c5 = document.createElement('td'); c5.textContent = r.last;
+    tr.append(c1, c2, c3, c4, c5);
+    tbody.appendChild(tr);
+  }
+});
+dash.draw('zero', (el) => {
+  const t = hsRows('town');
+  if (!t) { el.textContent = '—'; return; }
+  const seen = new Set(t.map((x) => x.key));
+  const z = hsWatch().filter((w) => !seen.has(w));
+  el.textContent = z.length ? z.join(', ') : 'none';
+});
+
+// Bar lists
+const bars = (name, dim, colorIndex) => dash.draw(name, (el) => {
+  const rows = hsRows(dim);
+  el.replaceChildren();
+  if (!rows) return;
+  const s = rows.slice().sort((a, b) => b.n - a.n || a.key.localeCompare(b.key));
+  const max = d3.max(s, (x) => x.n) || 1;
+  for (const r of s) {
+    const line = document.createElement('div'); line.className = 'hs-bar hs-pick'; line.dataset.k = r.key;
+    const l = document.createElement('span'); l.textContent = r.key;
+    const tr = document.createElement('div'); tr.className = 'track';
+    const f = document.createElement('div'); f.className = 'fill';
+    f.style.width = (r.n / max) * 100 + '%';
+    f.style.background = r.key === 'Not given' ? 'var(--cds-chart-muted)' : dash.colors[colorIndex];
+    tr.appendChild(f);
+    const c = document.createElement('span'); c.className = 'c'; c.textContent = d3.format(',')(r.n);
+    line.append(l, tr, c);
+    el.appendChild(line);
+  }
+});
+bars('places', 'place', 1);
+bars('kinds', 'kind', 2);
+
+// Column chart helper
+const columns = (name, dim, labelFmt, headFmt, tickEvery) => dash.draw(name, (el) => {
+  const rows = hsRows(dim);
+  el.querySelectorAll('svg').forEach((s) => s.remove());
+  const tip = hsTip(el); tip.hidden = true;
+  if (!rows) return;
+  const data = dim === 'month' ? rows.slice().sort((a, b) => a.key.localeCompare(b.key)) : rows;
+  const W = el.clientWidth || 320, H = 180, m = { t: 8, r: 4, b: 24, l: 28 };
+  const x = d3.scaleBand(data.map((d) => d.key), [m.l, W - m.r]).padding(0.2);
+  const ymax = Math.max(1, d3.max(data, (d) => d.n));
+  const y = d3.scaleLinear([0, ymax], [H - m.b, m.t]).nice();
+  const svg = d3.select(el).insert('svg', ':first-child').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img');
+  const ticks = y.ticks(Math.min(4, ymax)).filter(Number.isInteger);
+  svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).attr('stroke', 'var(--cds-chart-grid)');
+  svg.append('g').selectAll('text').data(ticks).join('text').attr('x', m.l - 6).attr('y', (d) => y(d)).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text(d3.format(','));
+  svg.append('g').selectAll('rect').data(data).join('rect')
+    .attr('x', (d) => x(d.key) + Math.max(0, (x.bandwidth() - 32) / 2)).attr('width', Math.min(32, x.bandwidth()))
+    .attr('y', (d) => y(d.n)).attr('height', (d) => y(0) - y(d.n)).attr('rx', 2).attr('fill', dash.colors[0])
+    .on('pointermove', (event, d) => hsShowTip(el, tip, event, headFmt(d.key), d3.format(',')(d.n) + (d.n === 1 ? ' report' : ' reports')))
+    .on('pointerleave', () => { tip.hidden = true; })
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => { event.stopPropagation(); hsDive(dim, d.key); });
+  const every = tickEvery(W, data.length);
+  svg.append('g').selectAll('text').data(data.filter((d, i) => i % every === 0)).join('text')
+    .attr('x', (d) => x(d.key) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle')
+    .attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text((d) => labelFmt(d.key));
+  svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', 'var(--cds-chart-axis)');
+});
+const monthLabel = (k) => d3.utcFormat('%b %y')(new Date(k + '-01T00:00:00Z'));
+columns('weekday', 'weekday', (k) => k, (k) => k, () => 1);
+columns('months', 'month', monthLabel, (k) => d3.utcFormat('%B %Y')(new Date(k + '-01T00:00:00Z')), (W, n) => Math.max(1, Math.ceil(n / Math.max(2, Math.floor(W / 56)))));
+
+// Time-of-day dot strip
+dash.draw('hours', (el) => {
+  const d = dash.data('incidents');
+  el.querySelectorAll('svg, p.hs-none').forEach((s) => s.remove());
+  const tip = hsTip(el); tip.hidden = true;
+  if (d.status !== 'ok') return;
+  const p = dash.params();
+  const rows = d.data.filter((r) => /^\d{2}:\d{2}$/.test(r.time || '') && hsIn(r, p.area) && ((p.evidence || 'all') === 'all' || r.evidence));
+  const toH = (t) => +t.slice(0, 2) + +t.slice(3, 5) / 60;
+  const W = el.clientWidth || 320, H = 120, m = { l: 28, r: 28 };
+  const x = d3.scaleLinear([6, 20], [m.l, W - m.r]);
+  const svg = d3.select(el).insert('svg', ':first-child').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img');
+  svg.append('rect').attr('x', x(9)).attr('width', x(15) - x(9)).attr('y', 14).attr('height', 62).attr('fill', 'var(--cds-chart-grid)').attr('opacity', 0.6);
+  svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', 76).attr('y2', 76).attr('stroke', 'var(--cds-chart-axis)');
+  const ticks = [6, 9, 12, 15, 18];
+  svg.append('g').selectAll('text').data(ticks).join('text').attr('x', (h) => x(h)).attr('y', 96).attr('text-anchor', 'middle').attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text((h) => (h === 12 ? 'noon' : (h % 12) + (h < 12 ? ' a.m.' : ' p.m.')));
+  const sorted = rows.slice().sort((a, b) => toH(a.time) - toH(b.time));
+  const stack = [];
+  const pos = sorted.map((r) => { const cx = x(toH(r.time)); let lvl = 0; while (stack.some((s) => s.lvl === lvl && Math.abs(s.cx - cx) < 14)) lvl++; stack.push({ cx, lvl }); return { r, cx, cy: 64 - lvl * 14 }; });
+  svg.append('g').selectAll('circle').data(pos).join('circle').attr('cx', (q) => q.cx).attr('cy', (q) => q.cy).attr('r', 6).attr('fill', dash.colors[3] || dash.colors[0])
+    .on('pointermove', (event, q) => hsShowTip(el, tip, event, q.r.town + ', ' + hsDate(q.r.date), q.r.time + ' · ' + (q.r.place || q.r.place_type)))
+    .on('pointerleave', () => { tip.hidden = true; });
+  svg.append('text').attr('x', x(12)).attr('y', 114).attr('text-anchor', 'middle').attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)')
+    .text(rows.length ? d3.format(',')(rows.length) + ' timed reports · shaded band is 9 a.m. to 3 p.m.' : 'No timed reports in this view');
+});
+
+// Incident list
+window.hsSort = { k: 'date', dir: -1 };
+document.querySelectorAll('.hs-sort').forEach((b) => b.addEventListener('click', () => {
+  hsSort.dir = hsSort.k === b.dataset.k ? -hsSort.dir : (b.dataset.k === 'date' ? -1 : 1);
+  hsSort.k = b.dataset.k;
+  document.querySelectorAll('.hs-sort').forEach((o) => o.closest('th').setAttribute('aria-sort', o === b ? (hsSort.dir > 0 ? 'ascending' : 'descending') : 'none'));
+  dash.draw('list');
+}));
+document.querySelectorAll('.hs-search').forEach((s) => s.addEventListener('input', () => dash.draw('list')));
+dash.draw('list', (tbody) => {
+  const d = dash.data('incidents');
+  tbody.replaceChildren();
+  if (d.status !== 'ok') return;
+  const p = dash.params();
+  const q = ((document.querySelector('.hs-search') || {}).value || '').trim().toLowerCase();
+  const rows = d.data
+    .filter((r) => hsIn(r, p.area) && ((p.evidence || 'all') === 'all' || r.evidence))
+    .filter((r) => !q || [r.town, r.title, r.place_type, r.place, r.source_kind].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => hsSort.dir * String(a[hsSort.k] || '').localeCompare(String(b[hsSort.k] || '')) || b.date.localeCompare(a.date));
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    const td = (text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.appendChild(c); return c; };
+    tr.dataset.key = r.id;
+    td(r.date);
+    td(r.town);
+    const t = td('');
+    if (/^https:\/\/[^\s"'<>]+$/.test(r.url || '')) { const a = document.createElement('a'); a.href = r.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = r.title; t.appendChild(a); } else t.textContent = r.title;
+    td(r.place || '', 'hs-hide-narrow');
+    td(r.place_type, 'hs-hide-narrow');
+    td(r.time || '', 'hs-hide-narrow');
+    const k = td('');
+    const chip = document.createElement('span'); chip.className = 'hs-kind' + (r.evidence ? ' ev' : ''); chip.textContent = r.source_kind; k.appendChild(chip);
+    tbody.appendChild(tr);
+  }
+});
+
+// Drill-down panels: tap a section, bar, column, town or tile to open a closer look
+(() => {
+  const root = document.querySelector('.hs');
+  const E = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const dlg = E('dialog', 'hs-dlg');
+  dlg.setAttribute('aria-labelledby', 'hs-dlg-title');
+  const inner = E('div', 'hs-dlg-in');
+  const head = E('div', 'hs-dlg-head');
+  const $back = E('button', 'hs-dlg-btn', '‹ Back'); $back.type = 'button'; $back.hidden = true;
+  const $t = E('h2', 'hs-dlg-title'); $t.id = 'hs-dlg-title';
+  const $x = E('button', 'hs-dlg-btn', 'Close'); $x.type = 'button';
+  head.append($back, $t, $x);
+  const $s = E('p', 'hs-dlg-sub');
+  const $b = E('div', 'hs-dlg-body');
+  inner.append(head, $s, $b); dlg.appendChild(inner); root.appendChild(dlg);
+
+  const DAY = 864e5;
+  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const BANDS = [['early', 'Before 9 a.m.', 0, 9], ['morning', '9 a.m. to noon', 9, 12], ['afternoon', 'Noon to 3 p.m.', 12, 15], ['late', 'After 3 p.m.', 15, 24]];
+  const isTime = (r) => /^\d{2}:\d{2}$/.test(r.time || '');
+  const toH = (t) => +t.slice(0, 2) + +t.slice(3, 5) / 60;
+  const band = (r) => BANDS.find((b) => toH(r.time) >= b[2] && toH(r.time) < b[3])[0];
+  const bandName = (k) => BANDS.find((b) => b[0] === k)[1];
+  const wdOf = (r) => WD[new Date(r.date + 'T00:00:00Z').getUTCDay()];
+  const mOf = (r) => r.date.slice(0, 7);
+  const mLabel = (k) => d3.utcFormat('%b %y')(new Date(k + '-01T00:00:00Z'));
+  const mLong = (k) => d3.utcFormat('%B %Y')(new Date(k + '-01T00:00:00Z'));
+  const plural = (n, w) => d3.format(',')(n) + ' ' + w + (n === 1 ? '' : 's');
+  const placeOf = (r) => r.place_type || 'Not given';
+
+  const scoped = () => {
+    const d = dash.data('incidents');
+    if (d.status !== 'ok') return [];
+    const p = dash.params();
+    return d.data.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date || '') && hsIn(r, p.area) && ((p.evidence || 'all') === 'all' || r.evidence));
+  };
+  const scopeLabel = () => {
+    const p = dash.params();
+    return hsAreaName(p.area) + ' · ' + ((p.evidence || 'all') === 'all' ? 'all reports' : 'only reports with evidence');
+  };
+  const refDate = () => {
+    const d = dash.data('incidents');
+    const v = d.status === 'ok' ? d.data.reduce((m, r) => (r.as_of > m ? r.as_of : m), '') : '';
+    return v ? Date.parse(v + 'T00:00:00Z') : Date.now();
+  };
+  const ageDays = (r) => (refDate() - Date.parse(r.date + 'T00:00:00Z')) / DAY;
+  const monthsOf = (rows) => {
+    if (!rows.length) return [];
+    let m = d3.min(rows, mOf); const end = d3.max(rows, mOf); const out = [];
+    while (m <= end) { out.push(m); const [y, mo] = m.split('-').map(Number); m = mo === 12 ? (y + 1) + '-01' : y + '-' + String(mo + 1).padStart(2, '0'); }
+    return out;
+  };
+  const byCount = (rows, keyFn) => d3.rollups(rows, (v) => v.length, keyFn).sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]))).map((d) => d[0]);
+
+  // Navigation
+  let stack = [];
+  const render = () => {
+    const v = stack[stack.length - 1];
+    if (!v) return;
+    $t.textContent = v.title;
+    $s.textContent = scopeLabel() + (v.sub ? ' · ' + v.sub : '');
+    $back.hidden = stack.length < 2;
+    $b.replaceChildren();
+    try { v.build($b); } catch (e) { console.error(e); $b.appendChild(E('p', 'note', 'Something went wrong drawing this view.')); }
+  };
+  const go = (v, fresh) => { if (fresh || !dlg.open) stack = []; stack.push(v); if (!dlg.open) dlg.showModal(); render(); dlg.scrollTop = 0; };
+  $back.addEventListener('click', () => { stack.pop(); render(); dlg.scrollTop = 0; });
+  $x.addEventListener('click', () => dlg.close());
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+  let rt; window.addEventListener('resize', () => { if (!dlg.open) return; clearTimeout(rt); rt = setTimeout(render, 150); });
+
+  // Building blocks
+  const section = (body, title, note) => {
+    const s = E('section', 'hs-dsec');
+    s.appendChild(E('h3', null, title));
+    if (note) s.appendChild(E('p', 'note', note));
+    body.appendChild(s);
+    return s;
+  };
+  const reportTable = (rows) => {
+    const w = E('div', 'hs-wrap hs-list');
+    const t = E('table');
+    const hr = E('tr');
+    ['Date', 'Town', 'What was reported', 'Place', 'Time', 'Backed by'].forEach((x) => hr.appendChild(E('th', null, x)));
+    t.appendChild(E('thead')).appendChild(hr);
+    const tb = t.appendChild(E('tbody'));
+    rows.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')).forEach((r) => {
+      const tr = E('tr');
+      tr.append(E('td', null, r.date), E('td', null, r.town));
+      const c = E('td');
+      if (/^https:\/\/[^\s"'<>]+$/.test(r.url || '')) { const a = E('a', null, r.title); a.href = r.url; a.target = '_blank'; a.rel = 'noopener'; c.appendChild(a); } else c.textContent = r.title;
+      tr.append(c, E('td', null, r.place || placeOf(r)), E('td', null, r.time || ''));
+      const k = E('td'); k.appendChild(E('span', 'hs-kind' + (r.evidence ? ' ev' : ''), r.source_kind)); tr.appendChild(k);
+      tb.appendChild(tr);
+    });
+    if (!rows.length) { const tr = E('tr'); const td = E('td', null, 'No reports in this view.'); td.colSpan = 6; tr.appendChild(td); tb.appendChild(tr); }
+    w.appendChild(t);
+    return w;
+  };
+  const heat = (rows, o) => {
+    const cnt = new Map();
+    rows.forEach((r) => { const k = o.row(r) + '\u0001' + o.col(r); cnt.set(k, (cnt.get(k) || 0) + 1); });
+    const max = Math.max(1, ...cnt.values());
+    const rf = o.rowFmt || String, cf = o.colFmt || String;
+    const w = E('div', 'hs-wrap');
+    const t = E('table', 'hs-heat');
+    const hr = E('tr'); hr.appendChild(E('th'));
+    o.cols.forEach((c) => { const th = E('th', 'n', cf(c)); th.scope = 'col'; th.style.textAlign = 'center'; hr.appendChild(th); });
+    hr.appendChild(E('th', 'n', 'Total'));
+    t.appendChild(E('thead')).appendChild(hr);
+    const tb = t.appendChild(E('tbody'));
+    o.rows.forEach((rk) => {
+      const tr = E('tr');
+      const th = E('th', null, rf(rk)); th.scope = 'row'; tr.appendChild(th);
+      let tot = 0;
+      o.cols.forEach((ck) => {
+        const n = cnt.get(rk + '\u0001' + ck) || 0; tot += n;
+        const td = E('td', n ? 'c' : 'c z', n ? String(n) : '·');
+        if (n) {
+          const pct = Math.round(18 + 67 * n / max);
+          td.style.background = `color-mix(in srgb, ${dash.colors[0]} ${pct}%, transparent)`;
+          if (pct > 50) td.style.color = '#fff';
+          td.tabIndex = 0; td.setAttribute('role', 'button');
+          td.setAttribute('aria-label', rf(rk) + ', ' + cf(ck) + ': ' + plural(n, 'report'));
+          const act = () => go(listView(rf(rk) + ', ' + cf(ck), (r) => o.row(r) === rk && o.col(r) === ck));
+          td.addEventListener('click', act);
+          td.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(); } });
+        }
+        tr.appendChild(td);
+      });
+      tr.appendChild(E('td', 'n', String(tot)));
+      tb.appendChild(tr);
+    });
+    if (!o.rows.length) { const tr = E('tr'); const td = E('td', null, 'No reports in this view.'); td.colSpan = o.cols.length + 2; tr.appendChild(td); tb.appendChild(tr); }
+    w.appendChild(t);
+    return w;
+  };
+  const barsOf = (rows, keyFn, colorIndex, onPick) => {
+    const m = d3.rollups(rows, (v) => v.length, keyFn).sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])));
+    const max = d3.max(m, (d) => d[1]) || 1;
+    const box = E('div', 'hs-bars');
+    m.forEach(([k, n]) => {
+      const line = E('div', 'hs-bar hs-pick');
+      line.tabIndex = 0; line.setAttribute('role', 'button'); line.setAttribute('aria-label', k + ': ' + plural(n, 'report'));
+      const tr = E('div', 'track'); const f = E('div', 'fill');
+      f.style.width = (n / max) * 100 + '%';
+      f.style.background = k === 'Not given' ? 'var(--cds-chart-muted)' : dash.colors[colorIndex];
+      tr.appendChild(f);
+      line.append(E('span', null, k), tr, E('span', 'c', String(n)));
+      line.addEventListener('click', () => onPick(k));
+      line.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(k); } });
+      box.appendChild(line);
+    });
+    if (!m.length) box.appendChild(E('p', 'note', 'None in this view.'));
+    return box;
+  };
+  const timeScatter = (host, rows) => {
+    const timed = rows.filter(isTime);
+    const box = E('div', 'hs-chart'); host.appendChild(box);
+    if (!timed.length) { box.appendChild(E('p', 'note', 'No reports in this view give a time.')); return; }
+    const months = monthsOf(timed);
+    const towns = byCount(timed, (r) => r.town);
+    const color = (t) => dash.colors[towns.indexOf(t) % dash.colors.length];
+    const W = box.clientWidth || 320, rowH = 34, m = { t: 8, r: 14, b: 30, l: 60 };
+    const plotH = months.length * rowH, H = m.t + plotH + m.b;
+    const lo = Math.min(6, Math.floor(d3.min(timed, (r) => toH(r.time)))), hi = Math.max(20, Math.ceil(d3.max(timed, (r) => toH(r.time))));
+    const x = d3.scaleLinear([lo, hi], [m.l, W - m.r]);
+    const y = d3.scaleBand(months, [m.t, m.t + plotH]);
+    const svg = d3.select(box).insert('svg', ':first-child').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Time of day of each report, by month');
+    svg.append('rect').attr('x', x(9)).attr('width', x(15) - x(9)).attr('y', m.t).attr('height', plotH).attr('fill', 'var(--cds-chart-grid)').attr('opacity', 0.6);
+    svg.append('g').selectAll('line').data(months).join('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', (d) => y(d) + y.bandwidth() / 2).attr('y2', (d) => y(d) + y.bandwidth() / 2).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(months).join('text').attr('x', m.l - 8).attr('y', (d) => y(d) + y.bandwidth() / 2).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text(mLabel);
+    const step = W < 420 ? 6 : 3;
+    const ticks = d3.range(Math.ceil(lo / step) * step, hi + 0.01, step);
+    const hf = (h) => (h === 12 ? 'noon' : h === 0 || h === 24 ? 'midnight' : (h % 12) + (h < 12 ? ' a.m.' : ' p.m.'));
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('x', (h) => x(h)).attr('y', H - 8).attr('text-anchor', 'middle').attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text(hf);
+    svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', m.t + plotH).attr('y2', m.t + plotH).attr('stroke', 'var(--cds-chart-axis)');
+    const placed = [];
+    const pos = timed.slice().sort((a, b) => toH(a.time) - toH(b.time)).map((r) => {
+      const cx = x(toH(r.time)), mid = y(mOf(r)) + y.bandwidth() / 2;
+      let lvl = 0; while (placed.some((p) => p.m === mOf(r) && p.lvl === lvl && Math.abs(p.cx - cx) < 13)) lvl++;
+      placed.push({ m: mOf(r), cx, lvl });
+      return { r, cx, cy: mid + (lvl % 2 ? 1 : -1) * Math.ceil(lvl / 2) * 9 };
+    });
+    const tip = hsTip(box); tip.hidden = true;
+    svg.append('g').selectAll('circle').data(pos).join('circle').attr('cx', (q) => q.cx).attr('cy', (q) => q.cy).attr('r', 6.5)
+      .attr('fill', (q) => color(q.r.town)).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1.5).style('cursor', 'pointer')
+      .on('pointermove', (event, q) => hsShowTip(box, tip, event, q.r.town + ', ' + hsDate(q.r.date), q.r.time + ' · ' + (q.r.place || placeOf(q.r))))
+      .on('pointerleave', () => { tip.hidden = true; })
+      .on('click', (event, q) => go(listView(q.r.town + ', ' + hsDate(q.r.date), (r) => r.id === q.r.id)));
+    const lg = E('div', 'hs-legend');
+    towns.forEach((t) => { const s = E('span'); const i = E('i'); i.style.background = color(t); s.append(i, document.createTextNode(t)); lg.appendChild(s); });
+    host.appendChild(lg);
+  };
+  const tilesOf = (body, items) => {
+    const box = E('div', 'hs-tiles');
+    items.forEach(([v, l]) => { const t = E('div', 'hs-tile'); t.append(E('span', 'v', String(v)), E('span', 'l', l)); box.appendChild(t); });
+    body.appendChild(box);
+  };
+
+  // Views
+  const listView = (title, fn, sub) => ({ title, sub, build: (b) => { const rows = scoped().filter(fn); section(b, plural(rows.length, 'report')).appendChild(reportTable(rows)); } });
+  const V = {};
+  V.all = () => listView('Every report', () => true);
+  V.recent = () => listView('Reports in the last 90 days', (r) => ageDays(r) <= 90, 'counted back from the latest check');
+  V.latest = () => ({ title: 'Most recent reports', build: (b) => { const rows = scoped().sort((a, c) => c.date.localeCompare(a.date)).slice(0, 5); section(b, 'The 5 latest reports').appendChild(reportTable(rows)); } });
+  V.month = (k) => listView('Reports in ' + mLong(k), (r) => mOf(r) === k);
+  V.weekday = (k) => listView('Reports on a ' + WDL[WD.indexOf(k)], (r) => wdOf(r) === k, 'many alerts are dated by the day they were filed');
+  V.place = (k) => listView(k, (r) => placeOf(r) === k, 'type of place');
+  V.kind = (k) => listView(k, (r) => r.source_kind === k, 'how the report is backed');
+
+  V.town = (name) => ({
+    title: name,
+    build: (b) => {
+      const rows = scoped().filter((r) => r.town === name);
+      tilesOf(b, [[rows.length, 'Reports, all time'], [rows.filter((r) => ageDays(r) <= 90).length, 'In the last 90 days'], [rows.filter((r) => r.evidence).length, 'With evidence'], [hsDate(d3.max(rows, (r) => r.date)), 'Most recent']]);
+      const months = monthsOf(rows);
+      section(b, 'Month by month', 'Tap a number to see those reports.').appendChild(heat(rows, { row: () => name, col: mOf, rows: rows.length ? [name] : [], cols: months, colFmt: mLabel }));
+      const timed = rows.filter(isTime);
+      if (timed.length) { const s = section(b, 'Time of day', 'Each dot is one report. The shaded band is 9 a.m. to 3 p.m.'); timeScatter(s, rows); }
+      section(b, 'Types of places').appendChild(barsOf(rows, placeOf, 1, (k) => go(listView(name + ': ' + k, (r) => r.town === name && placeOf(r) === k))));
+      section(b, 'How each report is backed').appendChild(barsOf(rows, (r) => r.source_kind, 2, (k) => go(listView(name + ': ' + k, (r) => r.town === name && r.source_kind === k))));
+      section(b, 'Day of the week', 'Approximate for alerts dated by the day they were filed.').appendChild(heat(rows, { row: () => name, col: wdOf, rows: rows.length ? [name] : [], cols: WD }));
+      section(b, 'Every report in ' + name).appendChild(reportTable(rows));
+    },
+  });
+  V.towns = () => ({
+    title: 'Towns, month by month',
+    build: (b) => {
+      const rows = scoped(); const towns = byCount(rows, (r) => r.town);
+      section(b, 'Reports by town and month', 'Darker squares mean more reports. Tap a number to see those reports.').appendChild(heat(rows, { row: (r) => r.town, col: mOf, rows: towns, cols: monthsOf(rows), colFmt: mLabel }));
+      section(b, 'Pick a town', 'Opens everything about that town.').appendChild(barsOf(rows, (r) => r.town, 0, (k) => go(V.town(k))));
+    },
+  });
+  V.hours = () => ({
+    title: 'Time of day, month by month',
+    build: (b) => {
+      const rows = scoped(); const timed = rows.filter(isTime);
+      const s1 = section(b, 'Each report by time and month', 'Each dot is one report, colored by town. The shaded band is 9 a.m. to 3 p.m. Tap a dot to see the report.');
+      timeScatter(s1, rows);
+      s1.appendChild(E('p', 'note', plural(timed.length, 'report') + ' of ' + d3.format(',')(rows.length) + ' give a time. The rest are left out here.'));
+      const bandsUsed = BANDS.map((x) => x[0]).filter((k) => timed.some((r) => band(r) === k));
+      section(b, 'Part of the day by month', 'Tap a number to see those reports.').appendChild(heat(timed, { row: band, col: mOf, rows: bandsUsed, cols: monthsOf(timed), rowFmt: bandName, colFmt: mLabel }));
+      section(b, 'Part of the day by town').appendChild(heat(timed, { row: (r) => r.town, col: band, rows: byCount(timed, (r) => r.town), cols: bandsUsed, colFmt: bandName }));
+      section(b, 'Reports that give a time').appendChild(reportTable(timed));
+    },
+  });
+  V.weekdays = () => ({
+    title: 'Day of the week, in depth',
+    sub: 'days are approximate',
+    build: (b) => {
+      const rows = scoped();
+      section(b, 'Day of the week by month', 'Tap a number to see those reports.').appendChild(heat(rows, { row: wdOf, col: mOf, rows: WD, cols: monthsOf(rows), rowFmt: (k) => WDL[WD.indexOf(k)], colFmt: mLabel }));
+      section(b, 'Day of the week by town').appendChild(heat(rows, { row: (r) => r.town, col: wdOf, rows: byCount(rows, (r) => r.town), cols: WD }));
+    },
+  });
+  V.months = () => ({
+    title: 'Reports by month, in depth',
+    build: (b) => {
+      const rows = scoped(); const months = monthsOf(rows);
+      section(b, 'By town', 'Tap a number to see those reports.').appendChild(heat(rows, { row: (r) => r.town, col: mOf, rows: byCount(rows, (r) => r.town), cols: months, colFmt: mLabel }));
+      section(b, 'By how each report is backed').appendChild(heat(rows, { row: (r) => r.source_kind, col: mOf, rows: byCount(rows, (r) => r.source_kind), cols: months, colFmt: mLabel }));
+      section(b, 'By type of place').appendChild(heat(rows, { row: placeOf, col: mOf, rows: byCount(rows, placeOf), cols: months, colFmt: mLabel }));
+    },
+  });
+  V.places = () => ({
+    title: 'Types of places, in depth',
+    build: (b) => {
+      const rows = scoped(); const places = byCount(rows, placeOf);
+      section(b, 'Tap a type to see its reports').appendChild(barsOf(rows, placeOf, 1, (k) => go(V.place(k))));
+      section(b, 'By town', 'Tap a number to see those reports.').appendChild(heat(rows, { row: placeOf, col: (r) => r.town, rows: places, cols: byCount(rows, (r) => r.town) }));
+      section(b, 'By month').appendChild(heat(rows, { row: placeOf, col: mOf, rows: places, cols: monthsOf(rows), colFmt: mLabel }));
+    },
+  });
+  V.kinds = () => ({
+    title: 'How reports are backed, in depth',
+    build: (b) => {
+      const rows = scoped(); const kinds = byCount(rows, (r) => r.source_kind);
+      section(b, 'Tap a type to see its reports').appendChild(barsOf(rows, (r) => r.source_kind, 2, (k) => go(V.kind(k))));
+      section(b, 'By town', 'Tap a number to see those reports.').appendChild(heat(rows, { row: (r) => r.source_kind, col: (r) => r.town, rows: kinds, cols: byCount(rows, (r) => r.town) }));
+      section(b, 'By month').appendChild(heat(rows, { row: (r) => r.source_kind, col: mOf, rows: kinds, cols: monthsOf(rows), colFmt: mLabel }));
+    },
+  });
+
+  // Pattern finder: each check reports only what the numbers support
+  const binTail = (k, n, p) => { if (k <= 0) return 1; let pmf = Math.pow(1 - p, n), cdf = 0; for (let i = 0; i < k; i++) { cdf += pmf; pmf = pmf * (n - i) / (i + 1) * p / (1 - p); } return Math.max(0, 1 - cdf); };
+  const strength = (p) => (p < 0.05 ? ['Clear', 'strong'] : ['Possible', 'some']);
+  const chanceText = (p) => (p < 0.01 ? '1 time in 100' : p < 0.05 ? '1 time in 20' : '1 time in 10');
+  const pctOf = (a, b) => Math.round(100 * a / b) + '%';
+  const iso = (t) => new Date(t).toISOString().slice(0, 10);
+  const findPatterns = (rows, opts = {}) => {
+    const out = []; const n = rows.length;
+    if (!n) return out;
+    const inTown = (r) => !opts.town || r.town === opts.town;
+
+    // Rising or falling
+    const rec = rows.filter((r) => ageDays(r) <= 90).length;
+    const prev = rows.filter((r) => ageDays(r) > 90 && ageDays(r) <= 180).length;
+    if (rec + prev >= 4) {
+      const tot = rec + prev;
+      const p = Math.min(1, 2 * Math.min(binTail(rec, tot, 0.5), binTail(prev, tot, 0.5)));
+      if (p < 0.1) {
+        const up = rec > prev;
+        out.push({ kind: 'trend', chip: [up ? 'Rising' : 'Falling', p < 0.05 ? 'strong' : 'some'],
+          head: `Reports are ${up ? 'rising' : 'falling'}: ${rec} in the last 90 days, ${up ? 'up' : 'down'} from ${prev} in the 90 days before.`,
+          detail: `A change this big would happen by chance less than ${chanceText(p)}.`, n: tot, open: () => go(V.recent()) });
+      } else {
+        out.push({ kind: 'trend', chip: ['Steady', 'weak'], head: `No clear change: ${rec} reports in the last 90 days and ${prev} in the 90 days before.`,
+          detail: 'The difference is small enough to be chance.', n: tot, open: () => go(V.recent()) });
+      }
+    }
+
+    // Busiest week
+    if (n >= 3) {
+      const ds = rows.map((r) => Date.parse(r.date + 'T00:00:00Z')).sort((a, b) => a - b);
+      let best = { k: 0 };
+      for (let i = 0; i < ds.length; i++) { let j = i; while (j + 1 < ds.length && ds[j + 1] - ds[i] <= 6 * DAY) j++; if (j - i + 1 > best.k) best = { k: j - i + 1, a: ds[i], b: ds[j] }; }
+      const weeks = Math.max(1, (ds[ds.length - 1] - ds[0]) / DAY / 7);
+      const avg = n / weeks;
+      if (best.k >= 3 && best.k >= 3 * avg) {
+        const a = iso(best.a), b = iso(best.b);
+        const towns = byCount(rows.filter((r) => r.date >= a && r.date <= b), (r) => r.town);
+        out.push({ kind: 'burst', chip: ['Cluster', 'some'], head: `Busiest week: ${best.k} reports from ${hsDate(a)} to ${hsDate(b)}.`,
+          detail: `In ${towns.join(', ')}. The average is ${avg < 1 ? 'less than 1' : 'about ' + Math.round(avg)} a week.`, n: best.k,
+          open: () => go(listView('Reports from ' + hsDate(a) + ' to ' + hsDate(b), (r) => r.date >= a && r.date <= b && inTown(r))) });
+      }
+    }
+
+    // Which towns lead
+    if (!opts.noTown && n >= 5) {
+      const t = d3.rollups(rows, (v) => v.length, (r) => r.town).sort((a, b) => b[1] - a[1]);
+      if (t.length >= 2 && t[0][1] / n >= 0.35 && t[0][1] > t[1][1]) {
+        out.push({ kind: 'town', chip: ['Most reports', 'info'], head: `${t[0][0]} has the most reports: ${t[0][1]} of ${n} (${pctOf(t[0][1], n)}).`,
+          detail: `Next is ${t[1][0]} with ${t[1][1]}. Bigger towns tend to have more reports, so this is a count, not a rate.`, n, open: () => go(V.town(t[0][0])) });
+      }
+      const rr = rows.filter((r) => ageDays(r) <= 90);
+      const rt = d3.rollups(rr, (v) => v.length, (r) => r.town).sort((a, b) => b[1] - a[1]);
+      if (rr.length >= 4 && t.length && rt[0][0] !== t[0][0] && (!rt[1] || rt[0][1] > rt[1][1])) {
+        out.push({ kind: 'town', chip: ['Shift', 'info'], head: `${rt[0][0]} leads lately: ${rt[0][1]} of the ${rr.length} reports in the last 90 days.`,
+          detail: `${t[0][0]} still leads over all time.`, n: rr.length, open: () => go(V.town(rt[0][0])) });
+      }
+    }
+
+    // Day of the week (tested against an even spread, corrected for picking the top day)
+    if (n >= 8) {
+      const w = d3.rollups(rows, (v) => v.length, wdOf).sort((a, b) => b[1] - a[1]);
+      const p = Math.min(1, 7 * binTail(w[0][1], n, 1 / 7));
+      if (p < 0.1) {
+        out.push({ kind: 'weekday', chip: strength(p), head: `${WDL[WD.indexOf(w[0][0])]}s stand out: ${w[0][1]} of ${n} reports.`,
+          detail: `An even spread would give about ${Math.max(1, Math.round(n / 7))}. A gap this big would happen by chance less than ${chanceText(p)}. Many alerts are dated by the day they were filed.`, n,
+          open: () => go(opts.town ? listView(opts.town + ' on ' + WDL[WD.indexOf(w[0][0])] + 's', (r) => inTown(r) && wdOf(r) === w[0][0]) : V.weekday(w[0][0])) });
+      }
+    }
+
+    // Time of day
+    const timed = rows.filter(isTime);
+    if (timed.length >= 4) {
+      const inB = timed.filter((r) => toH(r.time) >= 9 && toH(r.time) <= 15).length;
+      if (inB / timed.length >= 0.75) {
+        out.push({ kind: 'time', chip: timed.length >= 10 ? ['Clear', 'strong'] : ['Possible', 'some'],
+          head: `${inB} of ${timed.length} reports with a time happened between 9 a.m. and 3 p.m.`,
+          detail: timed.length < 10 ? 'Only a few reports give a time, so this could change.' : 'Most reports give no time, so this covers only some of them.', n: timed.length,
+          open: () => go(opts.town ? listView(opts.town + ': reports with a time', (r) => inTown(r) && isTime(r)) : V.hours()) });
+      }
+    }
+
+    // Most common type of place
+    const given = rows.filter((r) => placeOf(r) !== 'Not given');
+    if (given.length >= 4) {
+      const pt = d3.rollups(given, (v) => v.length, placeOf).sort((a, b) => b[1] - a[1]);
+      if (pt[0][1] >= 2 && pt[0][1] / given.length >= 0.4 && (!pt[1] || pt[0][1] > pt[1][1])) {
+        out.push({ kind: 'placetype', chip: given.length >= 10 ? ['Clear', 'strong'] : ['Possible', 'some'],
+          head: `${pt[0][0]} is the most common place: ${pt[0][1]} of ${given.length} reports that name a place.`,
+          detail: `${n - given.length} reports give no place.`, n: given.length,
+          open: () => go(listView(pt[0][0], (r) => inTown(r) && placeOf(r) === pt[0][0])) });
+      }
+    }
+
+    // Same place reported more than once
+    const norm = (s) => (s || '').trim().toLowerCase();
+    d3.groups(rows.filter((r) => norm(r.place) && norm(r.place) !== 'not given'), (r) => norm(r.place) + '|' + r.town)
+      .filter((g) => g[1].length >= 2)
+      .forEach(([, v]) => out.push({ kind: 'place', chip: ['Repeat place', 'some'], head: `${v[0].place} in ${v[0].town} has ${v.length} reports.`,
+        detail: 'Dates: ' + v.map((r) => hsDate(r.date)).sort().join(', ') + '.', n: v.length,
+        open: () => go(listView(v[0].place + ', ' + v[0].town, (r) => r.town === v[0].town && norm(r.place) === norm(v[0].place))) }));
+    return out;
+  };
+  const patItem = (p) => {
+    const li = E('li');
+    const btn = E('button', 'hs-pat'); btn.type = 'button';
+    const txt = E('span');
+    txt.append(E('b', null, p.head), E('span', 'd', p.detail + ' Based on ' + plural(p.n, 'report') + '.'));
+    btn.append(E('span', 'hs-chip ' + p.chip[1], p.chip[0]), txt, E('span', 'go', '›'));
+    btn.addEventListener('click', (e) => { e.stopPropagation(); p.open(); });
+    li.appendChild(btn);
+    return li;
+  };
+  const patList = (pats, empty) => {
+    const ul = E('ul', 'hs-pats');
+    if (!pats.length) ul.appendChild(E('li', 'note', empty || 'No clear patterns in this view yet.'));
+    pats.forEach((p) => ul.appendChild(patItem(p)));
+    return ul;
+  };
+  const patSection = (b, pats, empty) => { section(b, 'Patterns').appendChild(patList(pats, empty)); };
+
+  dash.draw('patterns', (ul) => {
+    const d = dash.data('incidents');
+    ul.replaceChildren();
+    if (d.status !== 'ok') return;
+    const pats = findPatterns(scoped()).filter((p) => p.kind !== 'trend' || p.chip[1] !== 'weak');
+    const list = patList(pats);
+    ul.append(...list.childNodes);
+  });
+
+  V.patterns = () => ({
+    title: 'Patterns, in depth',
+    build: (b) => {
+      section(b, 'What the page found').appendChild(patList(findPatterns(scoped())));
+      const s = section(b, 'What the page checks');
+      const ul = E('ul', 'hs-steps');
+      ['Rising or falling: reports in the last 90 days against the 90 days before. Called a change only when chance would explain it less than 1 time in 10.',
+        'Busiest week: any 7 days with at least 3 reports and at least three times the usual weekly pace.',
+        'Leading town: a town with at least 35% of reports, and any town that leads the last 90 days but not all time.',
+        'Day of the week: the top day, tested against an even spread across the week.',
+        'Time of day: shown when at least 3 in 4 reports with a time fall between 9 a.m. and 3 p.m.',
+        'Places: the most common type of place, and any exact place reported more than once.',
+        '"Clear" means the numbers are strong. "Possible" means it could still be chance or could change as reports come in.'].forEach((t) => ul.appendChild(E('li', null, t)));
+      s.appendChild(ul);
+    },
+  });
+
+  // Show matching patterns at the top of each detail panel
+  const withPats = (key, kinds, empty) => {
+    const orig = V[key];
+    V[key] = (a) => { const v = orig(a); const b0 = v.build; v.build = (b) => { patSection(b, findPatterns(scoped()).filter((p) => kinds.includes(p.kind)), empty); b0(b); }; return v; };
+  };
+  withPats('hours', ['time'], 'No time-of-day pattern yet. Too few reports give a time, or they are spread out.');
+  withPats('weekdays', ['weekday'], 'No day of the week stands out beyond what chance would give.');
+  withPats('months', ['trend', 'burst'], 'No clear rise, fall or cluster.');
+  withPats('towns', ['town', 'trend'], 'No town stands out.');
+  withPats('places', ['placetype', 'place'], 'No place type or exact place stands out.');
+  const townOrig = V.town;
+  V.town = (name) => { const v = townOrig(name); const b0 = v.build; v.build = (b) => { b0(b); const pats = findPatterns(scoped().filter((r) => r.town === name), { noTown: true, town: name }); const s = E('section', 'hs-dsec'); s.append(E('h3', null, 'Patterns in ' + name), patList(pats, 'No clear patterns for ' + name + ' yet.')); b.insertBefore(s, b.children[1] || null); }; return v; };
+
+  // Outlook: a simple forecast from past reports, checked against the past
+  const HALF = 90;
+  const scoreTowns = (rows, at) => {
+    const m = new Map();
+    rows.forEach((r) => { const age = (at - Date.parse(r.date + 'T00:00:00Z')) / DAY; if (age < 0) return; m.set(r.town, (m.get(r.town) || 0) + Math.pow(0.5, age / HALF)); });
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  };
+  const outlook = (rows) => {
+    const at = refDate();
+    const rec = rows.filter((r) => ageDays(r) >= 0 && ageDays(r) <= 90);
+    const rate = rec.length / 90;
+    const p7 = 1 - Math.exp(-rate * 7);
+    const sc = scoreTowns(rows, at);
+    const tot = d3.sum(sc, (d) => d[1]) || 1;
+    const towns = sc.map(([town, s]) => ({ town, share: s / tot, p7: 1 - Math.exp(-rate * 7 * s / tot) }));
+    // Back-test: for each past report, rank towns using only the reports before it
+    const sorted = rows.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const tests = [];
+    sorted.forEach((r) => {
+      const before = sorted.filter((x) => x.date < r.date);
+      if (before.length < 5) return;
+      const s = scoreTowns(before, Date.parse(r.date + 'T00:00:00Z'));
+      tests.push({ r, pick: s[0][0], hit: s[0][0] === r.town, k: s.length });
+    });
+    const hits = tests.filter((t) => t.hit).length;
+    const base = tests.length ? d3.mean(tests, (t) => 1 / t.k) : 0;
+    const pass = tests.length >= 5 && hits / tests.length > base + 0.05;
+    const pats = findPatterns(rows).filter((p) => ['time', 'weekday', 'placetype', 'place'].includes(p.kind) && p.chip[1] !== 'weak');
+    const trend = findPatterns(rows).find((p) => p.kind === 'trend');
+    return { rows, rec, rate, p7, towns, tests, hits, base, pass, pats, trend };
+  };
+  const btLine = (o) => (o.tests.length < 5
+    ? 'Not enough past reports yet to test how well this works.'
+    : `Tested on ${o.tests.length} past reports: the town it ranked first was right ${o.hits} times (${pctOf(o.hits, o.tests.length)}). A random pick among towns with earlier reports would be right about ${Math.round(o.base * 100)}% of the time.`);
+  const townBars = (o, onPick) => {
+    const box = E('div', 'hs-bars');
+    o.towns.forEach((t) => {
+      const line = E('div', 'hs-bar hs-pick'); line.tabIndex = 0; line.setAttribute('role', 'button');
+      line.setAttribute('aria-label', t.town + ': ' + pctOf(t.share, 1) + ' of the expected next report');
+      const tr = E('div', 'track'); const f = E('div', 'fill');
+      f.style.width = (t.share / o.towns[0].share) * 100 + '%'; f.style.background = dash.colors[0];
+      tr.appendChild(f);
+      line.append(E('span', null, t.town), tr, E('span', 'c', Math.round(t.share * 100) + '%'));
+      const act = (e) => { if (e) e.stopPropagation(); onPick(t.town); };
+      line.addEventListener('click', act);
+      line.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(e); } });
+      box.appendChild(line);
+    });
+    return box;
+  };
+  const buildOutlook = (host, o, full) => {
+    if (o.rows.length < 5) { host.appendChild(E('p', 'note', 'Not enough reports in this view to forecast anything.')); return; }
+    const big = E('div', 'hs-big');
+    big.append(E('span', 'v', Math.round(o.p7 * 100) + '%'), E('span', 'l', 'chance of at least one new report in the next 7 days, if the pace of the last 90 days holds.'));
+    host.appendChild(big);
+    host.appendChild(E('p', 'hs-sub', `${plural(o.rec.length, 'report')} in the last 90 days, about ${d3.format('.1f')(o.rate * 30)} a month.` + (o.trend && o.trend.chip[1] !== 'weak' ? ' ' + o.trend.head : '')));
+    const tw = E('div'); tw.style.display = 'grid'; tw.style.gap = 'var(--cds-gap-sm)';
+    if (o.pass) {
+      tw.appendChild(E('h3', null, 'Most likely town for the next report'));
+      tw.appendChild(townBars(o, (k) => go(V.town(k), !dlg.open)));
+      tw.appendChild(E('p', 'hs-sub', 'Share of the next report each town would get if it follows past reports, with recent ones counting more. Towns with no past reports are not listed but can still be affected.'));
+    } else {
+      tw.appendChild(E('h3', null, 'Most likely town'));
+      tw.appendChild(E('p', 'hs-sub', 'Not shown. Past reports have not picked the next town better than a guess, so a ranking here would mislead.'));
+    }
+    const bt = E('p', 'hs-sub'); bt.append(E('span', o.pass ? 'hs-ok' : 'hs-no', o.pass ? 'Beat a guess. ' : 'Did not beat a guess. '), document.createTextNode(btLine(o)));
+    tw.appendChild(bt);
+    host.appendChild(tw);
+    const wh = E('div'); wh.style.display = 'grid'; wh.style.gap = 'var(--cds-gap-xs)';
+    wh.appendChild(E('h3', null, 'When and what kind of place'));
+    wh.appendChild(o.pats.length ? patList(o.pats) : E('p', 'hs-sub', 'No time, day or place pattern is strong enough to show yet.'));
+    host.appendChild(wh);
+    if (!full) return;
+  };
+
+  dash.draw('outlook', (el) => {
+    el.replaceChildren();
+    if (dash.data('incidents').status !== 'ok') return;
+    buildOutlook(el, outlook(scoped()), false);
+  });
+
+  V.outlook = () => ({
+    title: 'Outlook, in depth',
+    build: (b) => {
+      const o = outlook(scoped());
+      const s1 = section(b, 'Forecast'); const box = E('div', 'hs-outlook'); s1.appendChild(box); buildOutlook(box, o, true);
+      if (o.rows.length < 5) return;
+      const s2 = section(b, 'Each town, next 7 days', 'Chance of at least one report in each town in the next 7 days, from the same pace and shares. Tap a town for everything about it.');
+      const w = E('div', 'hs-wrap'); const t = E('table'); const hr = E('tr');
+      ['Town', 'Share of next report', 'Chance in next 7 days', 'Reports, last 90 days'].forEach((x, i) => hr.appendChild(E('th', i ? 'n' : null, x)));
+      t.appendChild(E('thead')).appendChild(hr); const tb = t.appendChild(E('tbody'));
+      o.towns.forEach((x) => { const tr = E('tr', 'hs-pick'); tr.append(E('td', null, x.town), E('td', 'n', Math.round(x.share * 100) + '%'), E('td', 'n', Math.round(x.p7 * 100) + '%'), E('td', 'n', String(o.rec.filter((r) => r.town === x.town).length))); tr.addEventListener('click', () => go(V.town(x.town))); tb.appendChild(tr); });
+      w.appendChild(t); s2.appendChild(w);
+      if (!o.pass) s2.appendChild(E('p', 'note', 'These shares did not beat a guess on past reports. Read them as a summary of the past, not a forecast.'));
+      const s3 = section(b, 'How it did on past reports', btLine(o));
+      const w3 = E('div', 'hs-wrap hs-list'); const t3 = E('table'); const h3 = E('tr');
+      ['Date', 'Report was in', 'Ranked first', 'Right?'].forEach((x) => h3.appendChild(E('th', null, x)));
+      t3.appendChild(E('thead')).appendChild(h3); const tb3 = t3.appendChild(E('tbody'));
+      o.tests.slice().reverse().forEach((x) => { const tr = E('tr'); tr.append(E('td', null, x.r.date), E('td', null, x.r.town), E('td', null, x.pick), E('td', x.hit ? 'hs-ok' : null, x.hit ? 'Yes' : 'No')); tb3.appendChild(tr); });
+      w3.appendChild(t3); s3.appendChild(w3);
+      const s4 = section(b, 'How it works');
+      const ul = E('ul', 'hs-steps');
+      ['Pace: the number of reports in the last 90 days, spread evenly. The 7-day chance assumes reports keep coming at that pace.',
+        'Town: each past report counts 1 when new and half as much every 90 days. A town\'s share is its part of the total.',
+        'Check: for every past report, the method ranks towns using only the reports before it. If the top town is right more often than a random pick, the ranking is shown.',
+        'When and where: only patterns that pass the checks on the Patterns panel are shown.',
+        'Limits: it sees only reports that reached The ICE List, the news or this site\'s form. It cannot know about planned operations, and a quiet week does not mean a town is safe.'].forEach((x) => ul.appendChild(E('li', null, x)));
+      s4.appendChild(ul);
+    },
+  });
+
+  window.hsDive = (key, arg) => { const f = V[key]; if (f) go(f(arg), true); };
+
+  // Hook up the main page
+  const hook = (sel, key) => {
+    const card = document.querySelector(sel);
+    if (!card) return;
+    card.classList.add('hs-click');
+    const h2 = card.querySelector('h2');
+    const hd = E('div', 'hs-cardhead');
+    h2.replaceWith(hd); hd.appendChild(h2);
+    const btn = E('button', 'hs-dive', 'Details ›'); btn.type = 'button'; btn.setAttribute('aria-label', 'Details: ' + h2.textContent);
+    hd.appendChild(btn);
+    card.addEventListener('click', (e) => { if (e.target.closest('a, input, select, textarea')) return; hsDive(key); });
+  };
+  hook('#outlook', 'outlook'); hook('#patterns', 'patterns'); hook('#towns', 'towns'); hook('#places', 'places'); hook('#kinds', 'kinds'); hook('#weekdays', 'weekdays'); hook('#hours', 'hours'); hook('#months', 'months');
+
+  const pickBars = (sel, key) => {
+    const el = document.querySelector(sel);
+    const act = (e) => { const line = e.target.closest('.hs-pick'); if (!line) return; e.stopPropagation(); hsDive(key, line.dataset.k); };
+    el.addEventListener('click', act);
+  };
+  pickBars('[data-draw="places"]', 'place');
+  pickBars('[data-draw="kinds"]', 'kind');
+
+  document.querySelector('[data-draw="towns"]').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr'); if (!tr) return;
+    e.stopPropagation(); hsDive('town', tr.cells[0].textContent);
+  });
+
+  const tileKeys = { 't-n': 'all', 't-recent': 'recent', 't-towns': 'towns', 't-last': 'latest' };
+  document.querySelectorAll('#totals .hs-tile').forEach((t) => {
+    const key = tileKeys[t.querySelector('.v').dataset.draw];
+    t.classList.add('hs-click'); t.tabIndex = 0; t.setAttribute('role', 'button');
+    t.setAttribute('aria-label', 'Details: ' + t.querySelector('.l').textContent);
+    t.addEventListener('click', () => hsDive(key));
+    t.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hsDive(key); } });
+  });
+})();
+
+// Sighting form (sent to Formspree, reviewed before anything is posted)
+window.HS_FORM_ENDPOINT = 'https://formspree.io/f/maeoqrdp';
+(() => {
+  const form = document.getElementById('hs-report-form');
+  const status = document.getElementById('hs-report-status');
+  if (!form) return;
+  const today = hsPT(new Date(), { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2');
+  form.elements.date.max = today;
+  const say = (text, cls) => { status.textContent = text; status.className = 'hs-status' + (cls ? ' ' + cls : ''); };
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!form.checkValidity()) { say('Please fill in the town, date, where and what happened.', 'bad'); form.reportValidity(); return; }
+    if (HS_FORM_ENDPOINT.includes('FORM_ID_HERE')) { say('The report form is not connected yet. Please try again later.', 'bad'); return; }
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true; say('Sending...');
+    const fd = new FormData(form);
+    fd.append('_subject', 'ICE sighting report: ' + (fd.get('town') || '') + ' ' + (fd.get('date') || ''));
+    try {
+      const r = await fetch(HS_FORM_ENDPOINT, { method: 'POST', body: fd, headers: { Accept: 'application/json' } });
+      if (!r.ok) throw new Error('bad status');
+      form.reset();
+      say('Thank you. Your report was sent and will be reviewed. It shows on the site once a second source confirms it.', 'ok');
+    } catch (err) {
+      say('It did not send. Check your connection and try again.', 'bad');
+    } finally { btn.disabled = false; }
+  });
+})();
+</script>
+
+<script>
+(() => {
+  const B = 'https://images.wsdot.wa.gov/';
+  const CAMS = {
+    'Seattle': [
+      ['I-5 at Mercer St', 'nw/005vc16702.jpg'],
+      ['I-5 at S Holgate St', 'nw/005vc16396.jpg'],
+      ['I-5 at Spokane St', 'nw/005vc16297.jpg'],
+      ['I-5 at N Northgate Way', 'nw/005vc17287.jpg'],
+      ['I-5 at NE 175th St, Shoreline', 'nw/005vc17603.jpg'],
+      ['I-405 at NE 8th St, Bellevue', 'nw/405vc01383.jpg']
+    ],
+    'South King': [
+      ['SR 167 at W Main St, Auburn', 'nw/167vc01477.jpg'],
+      ['SR 18 at Auburn Way', 'nw/018vc00421.jpg'],
+      ['SR 167 at Willis St, Kent', 'nw/167vc01964.jpg'],
+      ['I-5 at S 272nd St', 'nw/005vc14683.jpg'],
+      ['I-5 at S 320th St, Federal Way', 'nw/005vc14379.jpg'],
+      ['I-405 at Sunset Blvd, Renton', 'nw/405vc00475.jpg']
+    ],
+    'Tacoma': [
+      ['I-5 at 54th Ave E, Fife', 'orflow/005vc13750.jpg'],
+      ['I-5 at Port of Tacoma Rd', 'ORFlow/005vc13660.jpg'],
+      ['I-5 at Pacific Ave', 'orflow/005vc13371.jpg'],
+      ['SR 167 at 54th Ave E, Fife', 'orflow/167vc00039.jpg'],
+      ['SR 16 at Union Ave', 'ORFlow/016vc00110.jpg']
+    ],
+    'Olympia': [
+      ['I-5 at Pacific Ave, Olympia', 'orflow/005vc10720.jpg'],
+      ['I-5 at Martin Way', 'orflow/005vc10907.jpg'],
+      ['I-5 at Sleater-Kinney Rd', 'orflow/005vc10835.jpg'],
+      ['I-5 at Capitol Blvd', 'orflow/005vc10480.jpg']
+    ],
+    'Everett': [
+      ['I-5 at 41st St, Everett', 'nw/005vc19267.jpg'],
+      ['I-5 at Everett Ave', 'nw/005vc19406.jpg'],
+      ['I-5 at Everett Mall Way', 'nw/005vc18918.jpg'],
+      ['I-5 at 164th St SW', 'nw/005vc18391.jpg'],
+      ['I-5 at 44th Ave W, Lynnwood', 'nw/005vc18065.jpg']
+    ],
+    'Bellingham': [
+      ['I-5 at Lakeway Dr, Bellingham', 'nw/005vc25308.jpg'],
+      ['I-5 at Meridian St', 'nw/005vc25630.jpg'],
+      ['I-5 at Sunset Dr', 'nw/005vc25494.jpg'],
+      ['I-5 at College Way, Mount Vernon', 'nw/005vc22773.jpg']
+    ],
+    'Vancouver': [
+      ['I-5 at Mill Plain Blvd', 'sw/005vc00105.jpg'],
+      ['I-205 at Mill Plain Blvd', 'sw/205vc02834.jpg'],
+      ['SR 500 at Thurston Way', 'sw/500vc00380.jpg'],
+      ['SR 500 at 112th Ave', 'sw/500vc00546.jpg']
+    ],
+    'Central': [
+      ['I-82 at SR 24, Yakima', 'sc/082VC03475.jpg'],
+      ['I-82 at Selah Creek', 'sc/082VC02240.jpg'],
+      ['SR 285 at N Wenatchee Ave', 'nc/285vc00436.jpg'],
+      ['SR 285, Wenatchee', 'nc/285vc00061.jpg'],
+      ['US 395 at Blue Bridge, Pasco', 'sc/395VC01921.jpg'],
+      ['SR 240 at Richland Wye', 'sc/240VC03785.jpg']
+    ],
+    'Spokane': [
+      ['I-90 at Division St', 'spokane/wsdot_090_28110_division.jpg'],
+      ['I-90 at Division St (2)', 'spokane/wsdot_090_28120_division2.jpg'],
+      ['I-90 at Hamilton St', 'spokane/wsdot_090_28230_hamilton.jpg'],
+      ['I-90 at Broadway Ave, Spokane Valley', 'spokane/wsdot_090_28620_broadway.jpg'],
+      ['I-90 at Havana St', 'spokane/wsdot_090_28450_havana.jpg']
+    ]
+  };
+  const box = document.getElementById('hs-cams');
+  const when = document.getElementById('hs-cams-time');
+  if (!box) return;
+  let area = 'Seattle';
+  window.hsCams = { CAMS, B, pick: (v) => { const b = document.querySelector('.hs-camtab[data-v="' + v + '"]'); if (b) b.click(); } };
+  const fmt = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
+  function draw() {
+    const t = Date.now();
+    box.replaceChildren(...CAMS[area].map(([name, path]) => {
+      const f = document.createElement('figure'); f.className = 'hs-cam';
+      const a = document.createElement('a'); a.href = 'https://wsdot.wa.gov/travel/real-time/cameras'; a.target = '_blank'; a.rel = 'noopener';
+      const img = document.createElement('img'); img.loading = 'lazy'; img.alt = 'WSDOT traffic camera: ' + name; img.src = B + path + '?t=' + t;
+      img.onerror = () => { a.replaceChildren(Object.assign(document.createElement('span'), { className: 'note', textContent: 'Camera offline right now.', style: 'display:grid;place-items:center;height:100%' })); };
+      a.append(img);
+      const c = document.createElement('figcaption'); c.innerHTML = '<b></b>'; c.firstChild.textContent = name;
+      f.append(a, c); return f;
+    }));
+    if (when) when.textContent = 'Images loaded ' + fmt.format(t) + ' Pacific. They refresh every 2 minutes while this page is open.';
+  }
+  document.querySelectorAll('.hs-camtab').forEach(b => b.addEventListener('click', () => {
+    area = b.dataset.v;
+    document.querySelectorAll('.hs-camtab').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    draw();
+  }));
+  draw();
+  setInterval(() => { if (!document.hidden) draw(); }, 120000);
+})();
+</script>
+<script>
+(() => {
+  const SOUTHKING = ['Kent', 'Auburn', 'Federal Way', 'Renton', 'Tukwila', 'SeaTac', 'Des Moines', 'Burien', 'Covington', 'Maple Valley', 'Algona', 'Pacific', 'Enumclaw', 'Black Diamond', 'Milton', 'Edgewood', 'Normandy Park', 'Newcastle'];
+  const OLY = ['Olympia', 'Lacey', 'Tumwater', 'Yelm'];
+  const BHAM = ['Bellingham', 'Ferndale', 'Lynden', 'Everson', 'Blaine', 'Sumas', 'Laurel', 'Mount Vernon', 'Burlington', 'Sedro-Woolley', 'Anacortes', 'Bow'];
+  const REG = { king: 'Seattle', south: 'Tacoma', north: 'Everett', southwest: 'Vancouver', central: 'Central', east: 'Spokane' };
+  const groupOf = (r) => SOUTHKING.includes(r.town) ? 'South King' : OLY.includes(r.town) ? 'Olympia' : BHAM.includes(r.town) ? 'Bellingham' : REG[r.area] || null;
+  const ACTIVE_DAYS = 2;
+  const box = document.getElementById('active');
+  if (!box) return;
+  const list = document.getElementById('hs-active-list');
+  const cams = document.getElementById('hs-active-cams');
+  const camNote = document.getElementById('hs-active-cam-note');
+  const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+  const daysAgo = (d) => Math.round((Date.parse(today()) - Date.parse(d)) / 86400000);
+  const nice = (d) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  function render(rows) {
+    const act = rows.filter((r) => r.date && daysAgo(r.date) >= 0 && daysAgo(r.date) < ACTIVE_DAYS)
+      .sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
+    if (!act.length || !window.hsCams) { box.hidden = true; return; }
+    list.replaceChildren(...act.slice(0, 4).map((r) => {
+      const li = document.createElement('li');
+      const when = daysAgo(r.date) === 0 ? 'today' : 'yesterday';
+      li.textContent = r.title + ' in ' + r.town + ', ' + when + ' (' + nice(r.date) + (r.time ? ', ' + r.time : '') + ')' + (r.place ? ' at ' + r.place : '') + '. ' + r.source_kind + '.';
+      return li;
+    }));
+    const groups = [...new Set(act.map(groupOf).filter(Boolean))].slice(0, 2);
+    const t = Date.now();
+    cams.replaceChildren(...groups.flatMap((g) => window.hsCams.CAMS[g].slice(0, groups.length > 1 ? 3 : 4).map(([name, path]) => {
+      const f = document.createElement('figure'); f.className = 'hs-cam';
+      const a = document.createElement('a'); a.href = 'https://wsdot.wa.gov/travel/real-time/cameras'; a.target = '_blank'; a.rel = 'noopener';
+      const img = document.createElement('img'); img.loading = 'lazy'; img.alt = 'WSDOT traffic camera: ' + name; img.src = window.hsCams.B + path + '?t=' + t;
+      img.onerror = () => { f.remove(); };
+      a.append(img);
+      const c = document.createElement('figcaption'); c.textContent = name;
+      f.append(a, c); return f;
+    })));
+    camNote.textContent = groups.length ? 'Nearest WSDOT road cameras, refreshed ' + new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' }).format(t) + ' Pacific:' : '';
+    if (groups[0]) window.hsCams.pick(groups[0]);
+    box.hidden = false;
+  }
+  let rows = [];
+  const load = () => fetch('data.json', { cache: 'no-store' }).then((r) => r.json()).then((d) => { rows = d; render(rows); }).catch(() => {});
+  load();
+  setInterval(load, 10 * 60 * 1000);
+  setInterval(() => { if (!document.hidden && rows.length) render(rows); }, 120000);
+})();
+</script>
+<script>
+// Site search: type anything about Washington and jump to the matching part of this page
+(() => {
+  const input = document.getElementById('hs-gs');
+  const list = document.getElementById('hs-gs-list');
+  if (!input || !list) return;
+  const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const flash = (el) => { if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.remove('hs-flash'); void el.offsetWidth; el.classList.add('hs-flash'); };
+  const goSection = (id) => () => flash(document.getElementById(id));
+  const SECTIONS = [
+    ['outlook', 'Outlook: where past reports point next', 'forecast prediction next week chance odds likely'],
+    ['patterns', 'Patterns', 'trend rising falling cluster busiest'],
+    ['towns', 'Where activity has been reported most', 'ranking hotspots score top cities towns most reports'],
+    ['places', 'Types of places', 'workplace store restaurant home street courthouse check in place type'],
+    ['kinds', 'How each report is backed', 'evidence confirmed unconfirmed video court record news eyewitness'],
+    ['weekdays', 'Day of the week', 'monday tuesday wednesday thursday friday saturday sunday weekday'],
+    ['hours', 'Time of day', 'morning afternoon evening hour time'],
+    ['months', 'Reports by month', 'month history timeline chart'],
+    ['list', 'Every report', 'all reports table list incidents arrests raids'],
+    ['cameras', 'Live WSDOT road cameras', 'cameras traffic wsdot highway live video'],
+    ['report', 'Report a sighting', 'report submit sighting tell send tip form'],
+    ['locate', 'Find someone who may be detained', 'detainee locator detained find person a number family arrested where held tacoma processing center nwipc'],
+    ['plates', 'Your car, license plate cameras and ICE', 'license plate flock alpr dmv dol driver data car sb 6002 privacy'],
+    ['help', 'If you or someone you know needs help', 'help lawyer attorney legal aid rights know your rights complaint misconduct hotline'],
+    ['notes', 'How this page works and what it leaves out', 'about method sources the ice list how it works data faq'],
+  ];
+  const setArea = (a) => { dash.setParams({ area: a }); };
+  const build = () => {
+    const items = [];
+    items.push({ k: 'Area', t: 'All of Washington', d: 'Show every report in the state', s: 'washington state wa all statewide', go: () => { setArea('all'); flash(document.getElementById('totals')); } });
+    for (const [key, r] of Object.entries(hsRegions)) {
+      items.push({ k: 'Region', t: r.name, d: r.cities.slice(0, 6).join(', ') + ' and more', s: r.name + ' ' + r.cities.join(' '), go: () => { setArea(key); flash(document.getElementById('totals')); } });
+    }
+    const d = dash.data('incidents');
+    const rows = d.status === 'ok' ? d.data : [];
+    const counts = d3.rollup(rows, (v) => v.length, (r) => r.town);
+    const towns = new Set([...Object.values(hsRegions).flatMap((r) => r.cities), ...counts.keys()]);
+    for (const town of towns) {
+      const n = counts.get(town) || 0;
+      const reg = (rows.find((r) => r.town === town) || {}).area || hsRegionOf(town);
+      const regName = reg ? hsRegions[reg].name : 'Washington';
+      items.push({ k: 'City', t: town + ', WA', d: (n ? n + (n === 1 ? ' report' : ' reports') : 'No reports so far') + ' · ' + regName, s: town, rank: n ? 2 : 1,
+        go: () => { if (reg) setArea(reg); if (n) hsDive('town', town); else flash(document.getElementById('towns')); } });
+    }
+    for (const r of rows) {
+      items.push({ k: 'Report', t: r.title + ' · ' + r.town, d: hsDate(r.date) + (r.place ? ' · ' + r.place : '') + ' · ' + r.source_kind, s: [r.title, r.town, r.place, r.place_type, r.source_kind, r.date].join(' '), rank: 0,
+        go: () => {
+          setArea('all'); dash.setParams({ evidence: 'all' });
+          const q = document.getElementById('hs-search'); if (q) { q.value = r.town; dash.draw('list'); }
+          setTimeout(() => flash(document.querySelector('#list tr[data-key="' + r.id + '"]') || document.getElementById('list')), 150);
+        } });
+    }
+    for (const [id, t, kw] of SECTIONS) items.push({ k: 'Section', t, d: 'Go to this part of the page', s: t + ' ' + kw, rank: 3, go: goSection(id) });
+    if (window.hsCams) for (const b of document.querySelectorAll('.hs-camtab')) {
+      items.push({ k: 'Cameras', t: 'Road cameras: ' + b.textContent, d: 'Live WSDOT traffic images', s: 'camera cameras traffic ' + b.textContent + ' ' + b.dataset.v, rank: 1, go: () => { b.click(); flash(document.getElementById('cameras')); } });
+    }
+    document.querySelectorAll('#help li a, #locate a.hs-btn').forEach((a) => {
+      items.push({ k: 'Help link', t: a.textContent, d: 'Opens ' + new URL(a.href).hostname, s: a.textContent + ' ' + (a.parentElement.textContent || '') + ' help', rank: 2, go: () => window.open(a.href, '_blank', 'noopener') });
+    });
+    return items.map((x) => Object.assign(x, { nt: norm(x.t), ns: norm(x.s) }));
+  };
+  const STOP = new Set(['in', 'wa', 'washington', 'the', 'of', 'a', 'at', 'near', 'ice', 'and', 'for', 'to']);
+  const search = (q) => {
+    const nq = norm(q);
+    if (!nq) return [];
+    const items = build();
+    const words = nq.split(' ').filter((w) => !STOP.has(w));
+    if (!words.length) {
+      const top = items.filter((x) => x.k === 'City' && x.rank === 2).sort((a, b) => parseInt(b.d) - parseInt(a.d)).slice(0, 5);
+      return items.filter((x) => x.k === 'Area' || x.k === 'Region').concat(top);
+    }
+    const stateOnly = false;
+    const scored = [];
+    for (const it of items) {
+      const hay = it.nt + ' ' + it.ns;
+      if (!words.every((w) => hay.includes(w))) continue;
+      let sc = (it.rank || 0);
+      const phrase = words.join(' ');
+      const bare = it.nt.replace(/ wa$/, '');
+      if (bare === phrase) sc += 30;
+      else if (it.nt.startsWith(phrase + ' ')) sc += 20;
+      else if (it.nt.startsWith(phrase)) sc += 12;
+      else if (it.nt.includes(phrase)) sc += 8;
+      if (it.k === 'City') sc += 4;
+      if (it.k === 'Region' || it.k === 'Area') sc += stateOnly ? 30 : 3;
+      scored.push([sc, it]);
+    }
+    scored.sort((a, b) => b[0] - a[0] || a[1].t.localeCompare(b[1].t));
+    return scored.slice(0, 12).map((x) => x[1]);
+  };
+  let res = [], sel = -1;
+  const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); sel = -1; };
+  const show = () => {
+    list.replaceChildren();
+    if (!input.value.trim()) { close(); return; }
+    if (!res.length) {
+      const li = document.createElement('li'); li.className = 'none'; li.textContent = 'Nothing on this page matches. Try a city name, "cameras", "lawyer" or "report".';
+      list.appendChild(li);
+    }
+    res.forEach((it, i) => {
+      const li = document.createElement('li'); li.id = 'hs-gs-o' + i; li.setAttribute('role', 'option'); li.setAttribute('aria-selected', String(i === sel));
+      const k = document.createElement('span'); k.className = 'k'; k.textContent = it.k;
+      const t = document.createElement('span'); t.className = 't'; t.textContent = it.t;
+      const d = document.createElement('span'); d.className = 'd'; d.textContent = it.d;
+      li.append(k, t, d);
+      li.addEventListener('mousedown', (e) => { e.preventDefault(); pick(i); });
+      list.appendChild(li);
+    });
+    list.hidden = false; input.setAttribute('aria-expanded', 'true');
+    if (sel >= 0) input.setAttribute('aria-activedescendant', 'hs-gs-o' + sel); else input.removeAttribute('aria-activedescendant');
+  };
+  const pick = (i) => { const it = res[i]; if (!it) return; close(); input.blur(); it.go(); };
+  input.addEventListener('input', () => { res = search(input.value); sel = -1; show(); });
+  input.addEventListener('focus', () => { if (input.value.trim()) { res = search(input.value); show(); } });
+  input.addEventListener('blur', () => setTimeout(close, 120));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (res.length) { sel = (sel + 1) % res.length; show(); } }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); if (res.length) { sel = (sel - 1 + res.length) % res.length; show(); } }
+    else if (e.key === 'Enter') { e.preventDefault(); pick(sel >= 0 ? sel : 0); }
+    else if (e.key === 'Escape') { close(); }
+  });
+})();
+</script>
+</body>
+</html>
