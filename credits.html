@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Works cited · Washington ICE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body { margin: 0; background: #11161d; color: #e4e9f0; line-height: 1.55;
+font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 820px; margin: 0 auto; padding: 0 22px 80px; }
+.top { text-align: center; padding: 22px 0 10px; font-size: 15px; font-weight: 700;
+letter-spacing: .14em; text-transform: uppercase; }
+.top a { color: inherit; text-decoration: none; }
+nav { padding: 6px 0 30px; }
+nav a { color: #9aa6b4; text-decoration: none; font-size: 15px; }
+nav a:hover { color: #e4e9f0; }
+h1 { font-size: clamp(36px, 6vw, 56px); margin: 0 0 10px; line-height: 1.05; }
+.lead { color: #9aa6b4; font-size: 18px; margin: 0 0 40px; }
+h2 { font-size: 24px; margin: 44px 0 6px; padding-bottom: 8px; border-bottom: 1px solid #2a3542; }
+h2 + p { color: #9aa6b4; margin: 0 0 18px; font-size: 15px; }
+.entry { display: grid; grid-template-columns: 76px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid #1f2834; }
+.entry.no-thumb { grid-template-columns: 1fr; }
+.thumb { width: 76px; height: 95px; object-fit: cover; border-radius: 6px; border: 1px solid #2a3542; }
+.cite { padding-left: 2em; text-indent: -2em; margin: 0; }
+.cite i { font-style: italic; }
+.person { font-weight: 700; margin: 0 0 4px; }
+a { color: #f0b35a; word-break: break-word; }
+.note { background: #18202a; border: 1px solid #2a3542; border-radius: 10px; padding: 16px 18px; margin-top: 50px; color: #c7cfd9; font-size: 15px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top"><a href="./">Washington ICE</a></div>
+<nav><a href="./">&larr; Back to the map</a></nav>
+<h1>Works cited</h1>
+<p class="lead">Every photo on this site was taken by someone, and every story came from someone's reporting. This page credits all of them.</p>
+<h2>Photographs</h2>
+<p>Each photo is used under the license its owner chose. Public domain photos were taken by congressional offices, which are part of the U.S. government.</p>
+<div id="photos">Loading…</div>
+<h2>Story sources</h2>
+<p>Where the facts in each person's story come from.</p>
+<div id="sources">Loading…</div>
+<h2>Further reporting</h2>
+<p>Articles and photo essays linked from the "In the news" section.</p>
+<div id="news">Loading…</div>
+<h2>Social media posts</h2>
+<p>Posts embedded from Instagram and X. Each belongs to the account that posted it.</p>
+<div id="social">None yet.</div>
+<h2>Tools</h2>
+<div>
+<div class="entry no-thumb"><p class="cite">GreenSock. <i>GSAP and ScrollTrigger</i>. Animation library. <a href="https://gsap.com/" target="_blank" rel="noopener">gsap.com</a>.</p></div>
+<div class="entry no-thumb"><p class="cite">Darkroom Engineering. <i>Lenis</i>. Smooth scroll library. <a href="https://lenis.darkroom.engineering/" target="_blank" rel="noopener">lenis.darkroom.engineering</a>.</p></div>
+<div class="entry no-thumb"><p class="cite">Wikimedia Commons. Free media repository. <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">commons.wikimedia.org</a>.</p></div>
+</div>
+<div class="note">
+If you took one of these photos, or you are one of the people shown, and want something corrected, credited differently, or removed,
+use the <a href="./#remove-">removal request form</a> on the main page. Removal requests are handled first.
+</div>
+</div>
+<div id="st-gt" style="display:none"></div>
+<style>
+.st-lang { position: fixed; top: 14px; right: 16px; z-index: 1000; display: flex; background: rgba(17,22,29,.85);
+border: 1px solid #2a3542; border-radius: 999px; padding: 3px; }
+.st-lang button { font: inherit; font-size: 14px; font-weight: 700; border: 0; border-radius: 999px; padding: 6px 12px;
+cursor: pointer; background: transparent; color: #9aa6b4; }
+.st-lang button[aria-pressed="true"] { background: #e4e9f0; color: #11161d; }
+.goog-te-banner-frame, body > .skiptranslate, #goog-gt-tt, .goog-te-balloon-frame { display: none !important; }
+body { top: 0 !important; }
+</style>
+<div class="st-lang notranslate" translate="no"><button data-l="en">English</button><button data-l="es">Español</button></div>
+<script>
+// Same English / Español switch as the main page. This page is translated by Google Translate.
+(function () {
+let lang = "en"; try { lang = localStorage.getItem("site-lang") === "es" ? "es" : "en"; } catch {}
+const past = "expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+const clear = () => { ["", "; domain=" + location.hostname, "; domain=." + location.hostname].forEach((d) => document.cookie = "googtrans=; " + past + d); };
+const loadGT = () => {
+document.cookie = "googtrans=/en/es; path=/";
+window.stGtInit = () => new google.translate.TranslateElement({ pageLanguage: "en", includedLanguages: "es", autoDisplay: false }, "st-gt");
+const s = document.createElement("script"); s.src = "https://translate.google.com/translate_a/element.js?cb=stGtInit"; document.head.appendChild(s);
+};
+document.querySelectorAll(".st-lang button").forEach((b) => {
+b.setAttribute("aria-pressed", b.dataset.l === lang);
+b.onclick = () => { if (b.dataset.l === lang) return; try { localStorage.setItem("site-lang", b.dataset.l); } catch {}
+if (b.dataset.l === "es") document.cookie = "googtrans=/en/es; path=/"; else clear(); location.reload(); };
+});
+if (lang === "es") { document.documentElement.lang = "es"; loadGT(); } else clear();
+})();
+</script>
+<script>
+const esc =(s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : "");
+const link = (u, text) => safeUrl(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(text || u)}</a>` : "";
+const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+Promise.all([
+fetch("stories.json?" + Date.now()).then((r) => r.json()).catch(() => []),
+fetch("news.json?" + Date.now()).then((r) => r.json()).catch(() => []),
+fetch("social.json?" + Date.now()).then((r) => r.json()).catch(() => [])
+]).then(([stories, news, social]) => {
+const posts = social.filter((s) => safeUrl(s.url));
+if (posts.length) document.getElementById("social").innerHTML = posts.map((s) => `
+<div class="entry no-thumb"><p class="cite">${esc(s.account || "Post")}. <i>${s.platform === "x" ? "X" : "Instagram"}</i>, ${link(s.url)}.</p></div>`).join("");
+const live = stories.filter((p) => p.approved === true);
+// Photographs: Photographer. "Title." Date. License. Wikimedia Commons, URL.
+const withPhotos = live.filter((p) => safeUrl(p.photo));
+document.getElementById("photos").innerHTML = withPhotos.length ? withPhotos.map((p) => `
+<div class="entry">
+<img class="thumb" src="${esc(p.photo)}" alt="" style="object-position:${esc(p.photoFocus || "center")}">
+<div>
+<p class="person">${esc(p.name || p.area)}</p>
+<p class="cite">${esc(p.photoBy || "Unknown photographer")}. "${esc(p.photoTitle || "Photo of " + p.name)}." ${p.photoDate ? esc(p.photoDate) + ". " : ""}${p.photoLicenseUrl ? link(p.photoLicenseUrl, p.photoLicense) : esc(p.photoLicense || "")}. ${p.photoPage ? "<i>Wikimedia Commons</i>, " + link(p.photoPage) + "." : ""}</p>
+</div>
+</div>`).join("") : "<p>No photos yet.</p>";
+// Story sources: Author. "Title." Site, Date, URL. Accessed date.
+const withSource = live.filter((p) => safeUrl(p.source));
+document.getElementById("sources").innerHTML = withSource.length ? withSource.map((p) => `
+<div class="entry no-thumb"><div>
+<p class="person">${esc(p.name || p.area)}</p>
+<p class="cite">${p.sourceAuthor ? esc(p.sourceAuthor) + ". " : ""}"${esc(p.sourceTitle || p.sourceName || "Source")}." <i>${esc(p.sourceSite || "")}</i>${p.sourceDate ? ", " + esc(p.sourceDate) : ""}, ${link(p.source)}. Accessed ${today}.</p>
+</div></div>`).join("") : "<p>No sources yet.</p>";
+document.getElementById("news").innerHTML = news.length ? news.filter((n) => safeUrl(n.url)).map((n) => `
+<div class="entry no-thumb">
+<p class="cite">"${esc(n.title)}." <i>${esc(n.outlet)}</i>, ${esc(n.date)}, ${link(n.url)}.</p>
+</div>`).join("") : "<p>No articles yet.</p>";
+});
+</script>
+</body>
+</html>

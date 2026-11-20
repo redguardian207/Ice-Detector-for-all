@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Their faces · Washington ICE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #11161d; color: #e4e9f0; line-height: 1.5;
+font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: #f0b35a; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px 80px; }
+.top { text-align: center; padding: 22px 0 6px; font-size: 15px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.top a { color: inherit; text-decoration: none; }
+nav { padding: 6px 0 26px; }
+nav a { color: #9aa6b4; text-decoration: none; font-size: 15px; }
+nav a:hover { color: #e4e9f0; }
+h1 { font-size: clamp(40px, 7vw, 76px); line-height: 1.02; margin: 0 0 14px; }
+h1 em { font-style: normal; color: #e5484d; text-transform: uppercase; }
+.lead { color: #9aa6b4; font-size: 19px; max-width: 680px; margin: 0 0 40px; }
+h2 { font-size: 30px; margin: 50px 0 6px; }
+h2 + p { color: #9aa6b4; margin: 0 0 22px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+.card { background: #1b2430; border: 1px solid #2a3542; border-radius: 12px; overflow: hidden;
+opacity: 0; transform: translateY(40px); transition: opacity .8s ease, transform .8s ease, border-color .3s ease; }
+.card.in { opacity: 1; transform: none; }
+.card:hover { border-color: #e5484d; }
+.photo { aspect-ratio: 4 / 5; overflow: hidden; background: #0d1117; }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 6s ease; }
+.card:hover .photo img { transform: scale(1.05); }
+.body { padding: 16px 18px 18px; }
+.wa { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+color: #fff; background: #e5484d; border-radius: 4px; padding: 2px 8px; margin: 0 0 8px; }
+.name { font-size: 24px; font-weight: 700; margin: 0 0 2px; }
+.meta { color: #9aa6b4; font-size: 14px; margin: 0 0 10px; }
+.sum { margin: 0 0 12px; }
+.credit { font-size: 12px; color: #9aa6b4; margin: 0 0 10px; }
+.links { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; }
+.links a.rm { color: #9aa6b4; }
+.lang { position: fixed; top: 14px; right: 16px; z-index: 1000; display: flex; background: rgba(17,22,29,.85);
+border: 1px solid #2a3542; border-radius: 999px; padding: 3px; }
+.lang button { font: inherit; font-size: 14px; font-weight: 700; border: 0; border-radius: 999px; padding: 6px 12px;
+cursor: pointer; background: transparent; color: #9aa6b4; }
+.lang button[aria-pressed="true"] { background: #e4e9f0; color: #11161d; }
+footer { color: #9aa6b4; font-size: 14px; border-top: 1px solid #2a3542; margin-top: 60px; padding-top: 24px; }
+@media (prefers-reduced-motion: reduce) { .card { opacity: 1; transform: none; transition: none; } }
+</style>
+</head>
+<body>
+<div class="lang" role="group" aria-label="Language / Idioma"><button data-l="en">English</button><button data-l="es">Español</button></div>
+<div class="wrap">
+<div class="top"><a href="./">Washington ICE</a></div>
+<nav><a href="./" data-en="← Back to the map" data-es="← Volver al mapa">← Back to the map</a></nav>
+<h1><span data-en="Their" data-es="Sus">Their</span> <em data-en="faces" data-es="rostros">faces</em>.</h1>
+<p class="lead" data-en="Real people, and what ICE did to them. Every photo is credited to the person who took it and is licensed for reuse."
+data-es="Personas reales, y lo que ICE les hizo. Cada foto tiene el crédito de quien la tomó y licencia de uso.">Real people, and what ICE did to them. Every photo is credited to the person who took it and is licensed for reuse.</p>
+<section id="peopleSec">
+<h2 data-en="Their stories" data-es="Sus historias">Their stories</h2>
+<p data-en="People whose detention or death was documented by news outlets and courts." data-es="Personas cuya detención o muerte fue documentada por medios de noticias y tribunales.">People whose detention or death was documented by news outlets and courts.</p>
+<div class="grid" id="people"></div>
+</section>
+<section id="momentsSec">
+<h2 data-en="Caught on camera" data-es="Captado en cámara">Caught on camera</h2>
+<p data-en="ICE arrests and detention conditions, photographed as they happened." data-es="Arrestos de ICE y condiciones de detención, fotografiados en el momento.">ICE arrests and detention conditions, photographed as they happened.</p>
+<div class="grid" id="moments"></div>
+</section>
+<footer>
+<a href="credits.html" data-en="Works cited: every photographer and source" data-es="Obras citadas: cada fotógrafo y fuente">Works cited: every photographer and source</a>
+</footer>
+</div>
+<script>
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : "");
+let lang = "en"; try { lang = localStorage.getItem("site-lang") === "es" ? "es" : "en"; } catch {}
+const tx = (en, es) => `<span data-en="${esc(en)}" data-es="${esc(es ?? en)}">${esc(lang === "es" ? (es ?? en) : en)}</span>`;
+const PHOTO = ["Photo:", "Foto:"], PD = ["Public domain", "Dominio público"], RM = ["Request removal", "Pedir que se retire"];
+const lic = (l) => (l === "Public domain" ? tx(PD[0], PD[1]) : esc(l || ""));
+function applyLang() {
+document.documentElement.lang = lang;
+document.querySelectorAll("[data-en]").forEach((el) => { el.textContent = el.dataset[lang]; });
+document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.l === lang));
+}
+document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
+lang = b.dataset.l; try { localStorage.setItem("site-lang", lang); } catch {} applyLang();
+}));
+function card(p, named) {
+const meta = [tx(p.area || "", p.area_es), p.date ? tx(p.date, p.date_es) : ""].filter(Boolean).join(" · ");
+return `<article class="card">
+<div class="photo"><img src="${esc(p.photo)}" alt="${esc(named ? "Photo of " + p.name : p.summary)}" loading="lazy" style="object-position:${esc(p.photoFocus || "center")}"></div>
+<div class="body">
+${p.wa ? `<span class="wa">Washington</span>` : ""}
+${named ? `<p class="name">${esc(p.name)}</p>` : ""}
+<p class="meta">${meta}</p>
+<p class="sum">${tx(p.summary || "", p.summary_es)}</p>
+<p class="credit">${tx(PHOTO[0], PHOTO[1])} ${p.photoNote ? tx(p.photoNote, p.photoNote_es) + " · " : ""}${esc(p.photoBy || "")} · ${lic(p.photoLicense)}</p>
+<div class="links">
+${safeUrl(p.source) ? `<a href="${esc(p.source)}" target="_blank" rel="noopener">${esc(p.sourceName || "Source")}</a>` : ""}
+${safeUrl(p.photoPage) ? `<a href="${esc(p.photoPage)}" target="_blank" rel="noopener">${tx("Photo source", "Fuente de la foto")}</a>` : ""}
+<a class="rm" href="./#remove-${esc(p.id)}">${tx(RM[0], RM[1])}</a>
+</div>
+</div>
+</article>`;
+}
+fetch("stories.json?" + Date.now()).then((r) => r.json()).then((all) => {
+// Only entries that have a photo are shown on this page.
+const withPhoto = all.filter((p) => p.approved === true && safeUrl(p.photo));
+const people = withPhoto.filter((p) => !p.deckOnly && p.name).sort((a, b) => (b.wa ? 1 : 0) - (a.wa ? 1 : 0));
+const moments = withPhoto.filter((p) => p.deckOnly);
+document.getElementById("people").innerHTML = people.map((p) => card(p, true)).join("");
+document.getElementById("moments").innerHTML = moments.map((p) => card(p, false)).join("");
+if (!people.length) document.getElementById("peopleSec").style.display = "none";
+if (!moments.length) document.getElementById("momentsSec").style.display = "none";
+applyLang();
+// cards rise in as they scroll into view
+const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => es.forEach((e) => {
+if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+}), { threshold: 0.15 }) : null;
+document.querySelectorAll(".card").forEach((c, i) => {
+c.style.transitionDelay = (i % 3) * 0.08 + "s";
+io ? io.observe(c) : c.classList.add("in");
+});
+});
+applyLang();
+</script>
+</body>
+</html>
